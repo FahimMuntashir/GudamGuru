@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:gudam_guru/signUpPage.dart';
+
+
+import 'otppage.dart';
 
 void main() {
   runApp(const MyApp());
@@ -27,8 +31,9 @@ class LandingPage extends StatelessWidget {
           // Background image
           Positioned.fill(
             child: Image.asset(
-              'assets/images/logo.png', // Add this image in your assets folder
+              'assets/images/background.png', // Add this image in your assets folder
               fit: BoxFit.cover,
+              opacity: const AlwaysStoppedAnimation(0.2),
             ),
           ),
           Center(
@@ -37,13 +42,13 @@ class LandingPage extends StatelessWidget {
               children: [
                 // Logo
                 Image.asset(
-                  'assets/logo.png', // Add your logo image in assets
-                  width: 150,
+                  'assets/images/logo.png', // Add your logo image in assets
+                  width: 400,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 30),
                 // App Name
                 const Text(
-                  'GUDAMGURU',
+                  '',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -51,21 +56,19 @@ class LandingPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 5),
-                // Tagline
-                const Text(
-                  'TRACK  •  SELL  •  GROW',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                    letterSpacing: 2.0,
-                  ),
-                ),
+
                 const SizedBox(height: 40),
                 // Buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildButton(context, 'Sign Up', Colors.green, () {}),
+                    _buildButton(context, 'Sign Up', Colors.green, () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const SignUpPage()),
+                      );
+                    }),
                     const SizedBox(width: 20),
                     _buildButton(context, 'Login', Colors.green, () {}),
                   ],
