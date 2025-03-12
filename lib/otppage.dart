@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 class OTPPage extends StatelessWidget {
@@ -14,6 +13,16 @@ class OTPPage extends StatelessWidget {
               'assets/images/background.png',
               opacity: const AlwaysStoppedAnimation(0.2),
               fit: BoxFit.cover,
+            ),
+          ),
+          Positioned(
+            top: 40,
+            left: 10,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black, size: 30),
+              onPressed: () {
+                Navigator.pop(context);
+              },
             ),
           ),
           Column(
@@ -32,12 +41,18 @@ class OTPPage extends StatelessWidget {
                     const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
-                      children: const [
-                        Text(
-                          'resend',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 14,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            // Add your resend OTP logic here
+                            print("Resend OTP tapped");
+                          },
+                          child: const Text(
+                            'Resend',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -54,9 +69,6 @@ class OTPPage extends StatelessWidget {
     );
   }
 }
-
-
-
 
 Widget _buildTextField(String hint, {bool isPassword = false}) {
   return TextField(

@@ -8,9 +8,6 @@ class SignUpPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Sign Up"),
-      ),
       body: Stack(
         children: [
           Positioned.fill(
@@ -18,6 +15,16 @@ class SignUpPage extends StatelessWidget {
               'assets/images/background.png',
               fit: BoxFit.cover,
               opacity: const AlwaysStoppedAnimation(0.2),
+            ),
+          ),
+          Positioned(
+            top: 40,
+            left: 10,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black, size: 30),
+              onPressed: () {
+                Navigator.pop(context);
+              },
             ),
           ),
           SingleChildScrollView(
