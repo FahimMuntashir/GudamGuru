@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gudam_guru/login.dart';
 import 'package:gudam_guru/signUpPage.dart';
 
 
@@ -70,7 +71,13 @@ class LandingPage extends StatelessWidget {
                       );
                     }),
                     const SizedBox(width: 20),
-                    _buildButton(context, 'Login', Colors.green, () {}),
+                    _buildButton(context, 'Login', Colors.green, () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const LoginPage()),
+                      );
+                    }),
                   ],
                 ),
               ],
