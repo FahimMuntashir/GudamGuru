@@ -105,18 +105,18 @@ class HomePage extends StatelessWidget {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         children: [
-                          _buildQuickButton('assets/icons/add_product.png',
+                          _buildQuickButton('assets/icons/newProduct.png',
                               'Add New Product'),
                           _buildQuickButton(
-                              'assets/icons/add_item.png', 'Add New Item'),
+                              'assets/icons/addItem.png', 'Add New Item'),
                           _buildQuickButton(
                               'assets/icons/sell_items.png', 'Sell Items'),
                           _buildQuickButton(
                               'assets/icons/inventory.png', 'Inventory'),
                           _buildQuickButton(
-                              'assets/icons/reports.png', 'Buy & Sell Reports'),
+                              'assets/icons/analysis.png', 'Buy & Sell Reports'),
                           _buildQuickButton(
-                              'assets/icons/low_stock.png', 'Low Stock Alerts'),
+                              'assets/icons/alert.png', 'Low Stock Alerts'),
                         ],
                       ),
                     ],
