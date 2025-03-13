@@ -144,7 +144,7 @@ class HomePage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _buildOverviewTile('assets/icons/sales.png',
+                      _buildOverviewTile('assets/icons/taka.png',
                           'Total Sales Today', '৳ 0.00'),
                       _buildOverviewTile('assets/icons/purchase.png',
                           'Total Purchase Today', '৳ 0.00'),
