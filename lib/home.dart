@@ -1,125 +1,6 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
-}
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: const LandingPage(),
-    );
-  }
-}
-
-class LandingPage extends StatelessWidget {
-  const LandingPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/background.png',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(),
-              Center(
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  width: 180,
-                ),
-              ),
-              const SizedBox(height: 30),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 50),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildButton(context, 'Sign Up', Colors.green, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const SignUpPage()),
-                      );
-                    }),
-                    _buildButton(context, 'Login', Colors.green, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const LoginPage()),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 50),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class LoginPage extends StatelessWidget {
-  const LoginPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/background.png',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/images/logo.png',
-                width: 150,
-              ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: Column(
-                  children: [
-                    _buildTextField('User ID'),
-                    const SizedBox(height: 15),
-                    _buildTextField('Password', isPassword: true),
-                    const SizedBox(height: 30),
-                    _buildButton(context, 'Login', Colors.green, () {
-                      // On successful login, navigate to HomePage
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const HomePage(companyName: 'My Company')),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class HomePage extends StatelessWidget {
   final String companyName;
@@ -151,18 +32,24 @@ class HomePage extends StatelessWidget {
               spacing: 10,
               runSpacing: 10,
               children: [
-                _buildQuickPanelButton('Add New Product', 'assets/images/add_product.png'),
-                _buildQuickPanelButton('Add New Item', 'assets/images/add_item.png'),
-                _buildQuickPanelButton('Sell Items', 'assets/images/sell_items.png'),
-                _buildQuickPanelButton('Inventory', 'assets/images/inventory.png'),
-                _buildQuickPanelButton('Buy & Sell Reports', 'assets/images/reports.png'),
-                _buildQuickPanelButton('Low Stock Alerts', 'assets/images/low_stock.png'),
+                // _buildQuickPanelButton('Add New Product', 'assets/images/add_product.png'),
+                // _buildQuickPanelButton('Add New Item', 'assets/images/add_item.png'),
+                // _buildQuickPanelButton('Sell Items', 'assets/images/sell_items.png'),
+                // _buildQuickPanelButton('Inventory', 'assets/images/inventory.png'),
+                // _buildQuickPanelButton('Buy & Sell Reports', 'assets/images/reports.png'),
+                // _buildQuickPanelButton('Low Stock Alerts', 'assets/images/low_stock.png'),
+                 _buildQuickPanelButton('Add New Product', 'assets/images/logo.png'),
+                _buildQuickPanelButton('Add New Item', 'assets/images/logo.png'),
+                _buildQuickPanelButton('Sell Items', 'assets/images/logo.png'),
+                _buildQuickPanelButton('Inventory', 'assets/images/logo.png'),
+                _buildQuickPanelButton('Buy & Sell Reports', 'assets/images/logo.png'),
+                _buildQuickPanelButton('Low Stock Alerts', 'assets/images/logo.png'),
               ],
             ),
           ),
 
           // Overview Panel
-          const Padding(
+           Padding(
             padding: EdgeInsets.all(16.0),
             child: Column(
               children: [

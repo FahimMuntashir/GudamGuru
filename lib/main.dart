@@ -3,7 +3,6 @@ import 'package:gudam_guru/login.dart';
 import 'package:gudam_guru/signUpPage.dart';
 
 
-import 'otppage.dart';
 
 void main() {
   runApp(const MyApp());
