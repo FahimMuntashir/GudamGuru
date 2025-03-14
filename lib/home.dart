@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'newproduct.dart';
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -106,17 +108,17 @@ class HomePage extends StatelessWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         children: [
                           _buildQuickButton('assets/icons/newProduct.png',
-                              'Add New Product'),
-                          _buildQuickButton(
-                              'assets/icons/addItem.png', 'Add New Item'),
-                          _buildQuickButton(
-                              'assets/icons/sell_items.png', 'Sell Items'),
-                          _buildQuickButton(
-                              'assets/icons/inventory.png', 'Inventory'),
-                          _buildQuickButton(
-                              'assets/icons/analysis.png', 'Buy & Sell Reports'),
-                          _buildQuickButton(
-                              'assets/icons/alert.png', 'Low Stock Alerts'),
+                              'Add New Product', context),
+                          _buildQuickButton('assets/icons/addItem.png',
+                              'Add New Item', context),
+                          _buildQuickButton('assets/icons/sell_items.png',
+                              'Sell Items', context),
+                          _buildQuickButton('assets/icons/inventory.png',
+                              'Inventory', context),
+                          _buildQuickButton('assets/icons/analysis.png',
+                              'Buy & Sell Reports', context),
+                          _buildQuickButton('assets/icons/alert.png',
+                              'Low Stock Alerts', context),
                         ],
                       ),
                     ],
@@ -224,40 +226,51 @@ Widget _buildOverviewTile(String iconPath, String title, String value) {
 }
 
 //quicl panel
-// Updated Quick Panel Buttons with White Box Around Text
-Widget _buildQuickButton(String iconPath, String label) {
-  return Column(
-    children: [
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 5,
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Image.asset(iconPath, width: 40, height: 40),
-            const SizedBox(height: 5),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(5),
+Widget _buildQuickButton(String iconPath, String label, BuildContext context) {
+  return GestureDetector(
+    onTap: () {
+      if (label == 'Add New Product') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) =>
+                  const NewProductPage()), // Fix the class name
+        );
+      }
+    },
+    child: Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 5,
+                spreadRadius: 2,
               ),
-              child: Text(label,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.bold)),
-            ),
-          ],
+            ],
+          ),
+          child: Column(
+            children: [
+              Image.asset(iconPath, width: 40, height: 40),
+              const SizedBox(height: 5),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(label,
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
         ),
-      ),
-    ],
+      ],
+    ),
   );
 }
