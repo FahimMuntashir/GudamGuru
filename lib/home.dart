@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gudam_guru/inventoryPage.dart';
 
 import 'newproduct.dart';
 
@@ -235,6 +236,12 @@ Widget _buildQuickButton(String iconPath, String label, BuildContext context) {
           MaterialPageRoute(
               builder: (context) =>
                   const NewProductPage()), // Fix the class name
+        );
+      } else if (label == 'Inventory') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => const InventoryPage()), // Fix applied here
         );
       }
     },
