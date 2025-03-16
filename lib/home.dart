@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gudam_guru/inventoryPage.dart';
+import 'package:gudam_guru/newItemPage.dart';
 
 import 'newproduct.dart';
 
@@ -242,6 +243,13 @@ Widget _buildQuickButton(String iconPath, String label, BuildContext context) {
           context,
           MaterialPageRoute(
               builder: (context) => const InventoryPage()), // Fix applied here
+        );
+      }
+      else if (label == 'Add New Item') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => const NewItemPage()), // Fix applied here
         );
       }
     },
