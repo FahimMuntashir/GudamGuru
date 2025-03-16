@@ -86,7 +86,7 @@ class _NewProductPageState extends State<NewProductPage> {
                     children: [
                       Expanded(
                         child: _buildQuickActionButton(
-                            'assets/images/cam.png', 'Take a Picture'),
+                            'assets/images/camera.png', 'Take a Picture'),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
