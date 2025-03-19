@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'login.dart';
 
 class OTPPage extends StatelessWidget {
   const OTPPage({super.key});
@@ -58,7 +59,13 @@ class OTPPage extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    _buildButton(context, 'Confirm', Colors.purple, () {}),
+                    _buildButton(context, 'Confirm', Colors.purple, () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const LoginPage()),
+                      );
+                    }),
                   ],
                 ),
               ),

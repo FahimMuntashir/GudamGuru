@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:gudam_guru/login.dart';
-import 'package:gudam_guru/signUpPage.dart';
 
-
+import 'login.dart';
+import 'signUpPage.dart';
 
 void main() {
   runApp(const MyApp());

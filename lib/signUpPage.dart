@@ -11,11 +11,65 @@ class SignUpPage extends StatelessWidget {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset(
-              'assets/images/background.png',
-              fit: BoxFit.cover,
-              opacity: const AlwaysStoppedAnimation(0.2),
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/images/background.png'),
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
+          ),
+          Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/images/logo.png',
+                        width: 150,
+                      ),
+                      const SizedBox(height: 20),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        child: Column(
+                          children: [
+                            _buildTextField('Company Name'),
+                            const SizedBox(height: 15),
+                            _buildTextField('User ID'),
+                            const SizedBox(height: 15),
+                            _buildTextField('Mobile Number'),
+                            const SizedBox(height: 15),
+                            _buildTextField('Password', isPassword: true),
+                            const SizedBox(height: 15),
+                            _buildTextField('Confirm Password',
+                                isPassword: true),
+                            const SizedBox(height: 30),
+                            _buildButton(
+                              context,
+                              'sign up',
+                              Colors.green,
+                              () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const OTPPage()),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
           Positioned(
             top: 40,
@@ -25,48 +79,6 @@ class SignUpPage extends StatelessWidget {
               onPressed: () {
                 Navigator.pop(context);
               },
-            ),
-          ),
-          SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
-                  'assets/images/logo.png',
-                  width: 150,
-                ),
-                const SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: Column(
-                    children: [
-                      _buildTextField('Company Name'),
-                      const SizedBox(height: 15),
-                      _buildTextField('User ID'),
-                      const SizedBox(height: 15),
-                      _buildTextField('Mobile Number'),
-                      const SizedBox(height: 15),
-                      _buildTextField('Password', isPassword: true),
-                      const SizedBox(height: 15),
-                      _buildTextField('Confirm Password', isPassword: true),
-                      const SizedBox(height: 30),
-                      _buildButton(
-                        context,
-                        'sign up',
-                        Colors.green,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const OTPPage()),
-                          );
-                        },
-                      ),
-                      SizedBox(height: 10,)
-                    ],
-                  ),
-                ),
-              ],
             ),
           ),
         ],

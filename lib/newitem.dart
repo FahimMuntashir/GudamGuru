@@ -4,14 +4,14 @@ import 'inventory.dart';
 import 'reportanalytics.dart';
 import 'profile.dart';
 
-class NewProductPage extends StatefulWidget {
-  const NewProductPage({super.key});
+class NewItemPage extends StatefulWidget {
+  const NewItemPage({super.key});
 
   @override
-  _NewProductPageState createState() => _NewProductPageState();
+  _NewItemPageState createState() => _NewItemPageState();
 }
 
-class _NewProductPageState extends State<NewProductPage> {
+class _NewItemPageState extends State<NewItemPage> {
   String selectedUnit = 'KG'; // Default unit for Quantity
   final List<String> unitOptions = [
     'KG',
@@ -35,6 +35,7 @@ class _NewProductPageState extends State<NewProductPage> {
     return Scaffold(
       body: Stack(
         children: [
+          // Background Image (Stretched to Full Page)
           Positioned.fill(
             child: Container(
               width: double.infinity,
@@ -47,12 +48,14 @@ class _NewProductPageState extends State<NewProductPage> {
               ),
             ),
           ),
+
           Column(
             children: [
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
+                      // Header
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(
@@ -89,6 +92,8 @@ class _NewProductPageState extends State<NewProductPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
+
+                      // Full Container with Buttons & Text Fields
                       Container(
                         padding: const EdgeInsets.all(15),
                         margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -98,6 +103,7 @@ class _NewProductPageState extends State<NewProductPage> {
                         ),
                         child: Column(
                           children: [
+                            // Quick Actions (Take Picture & Scan Barcode)
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -114,13 +120,22 @@ class _NewProductPageState extends State<NewProductPage> {
                                 ),
                               ],
                             ),
+
                             const SizedBox(height: 10),
-                            _buildTextField('Add Product ID',
+
+                            // Search Bar
+                            _buildSearchBar(),
+
+                            const SizedBox(height: 10),
+
+                            // Input Fields Inside the Container
+                            _buildTextField('Product ID',
                                 errorText:
                                     'Not needed if picture/barcode scanned'),
-                            _buildTextField('Enter Category'),
                             _buildTextField('Product Name'),
                             _buildTextField('Purchase Price/unit'),
+
+                            // Quantity with Unit Toggle
                             Row(
                               children: [
                                 Expanded(child: _buildTextField('Quantity')),
@@ -141,30 +156,32 @@ class _NewProductPageState extends State<NewProductPage> {
                                 ),
                               ],
                             ),
-                            _buildTextField('Brand Name'),
-                            _buildTextField('Set Low Stock Alert'),
+
                             _buildTextField('Description', maxLines: 3),
+
+                            const SizedBox(height: 10),
+
+                            // Add Item Button
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xff9b89ff),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 40, vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                              ),
+                              onPressed: () {},
+                              child: const Text(
+                                'Add Item',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ],
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xff9b89ff),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 40, vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        onPressed: () {},
-                        child: const Text(
-                          'Add Product',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -176,6 +193,8 @@ class _NewProductPageState extends State<NewProductPage> {
           ),
         ],
       ),
+
+      // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Color(0xff000000),
@@ -219,7 +238,22 @@ class _NewProductPageState extends State<NewProductPage> {
     );
   }
 
-  // Quick Action Button Widget (Side-by-Side Fix)
+  // Search Bar Widget
+  Widget _buildSearchBar() {
+    return TextField(
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        hintText: 'Search',
+        prefixIcon: const Icon(Icons.search),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  // Quick Action Button Widget
   Widget _buildQuickActionButton(String iconPath, String label) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -246,30 +280,30 @@ class _NewProductPageState extends State<NewProductPage> {
       ),
     );
   }
-}
 
 // Text Field Widget with Optional Error Message
-Widget _buildTextField(String hint, {int maxLines = 1, String? errorText}) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (errorText != null)
-          Text(errorText,
-              style: const TextStyle(color: Colors.red, fontSize: 12)),
-        TextField(
-          maxLines: maxLines,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.white,
-            hintText: hint,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+  Widget _buildTextField(String hint, {int maxLines = 1, String? errorText}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (errorText != null)
+            Text(errorText,
+                style: const TextStyle(color: Colors.red, fontSize: 12)),
+          TextField(
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white,
+              hintText: hint,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }

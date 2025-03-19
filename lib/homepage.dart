@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:gudam_guru/inventory.dart';
-import 'package:gudam_guru/newitem.dart';
-import 'package:gudam_guru/reportanalytics.dart';
-import 'package:gudam_guru/sell.dart';
 
 import 'newproduct.dart';
+import 'newitem.dart';
+import 'sell.dart';
+import 'inventory.dart';
+import 'reportanalytics.dart';
+import 'profile.dart';
+import 'lowstock.dart';
+import 'notes.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _selectedIndex = 0;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -107,22 +116,25 @@ class HomePage extends StatelessWidget {
 
                       // Action Buttons
                       GridView.count(
-                        crossAxisCount: 3,
+                        crossAxisCount: 2,
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
+                        childAspectRatio: 1.1,
                         children: [
-                          _buildQuickButton('assets/icons/newProduct.png',
+                          _buildQuickButton('assets/images/newProduct.png',
                               'Add New Product', context),
-                          _buildQuickButton('assets/icons/addItem.png',
+                          _buildQuickButton('assets/images/addItem.png',
                               'Add New Item', context),
-                          _buildQuickButton('assets/icons/sell_items.png',
-                              'Sell Items', context),
-                          _buildQuickButton('assets/icons/inventory.png',
-                              'Inventory', context),
-                          _buildQuickButton('assets/icons/analysis.png',
+                          _buildQuickButton(
+                              'assets/images/sell.png', 'Sell Items', context),
+                          _buildQuickButton(
+                              'assets/images/stock.png', 'Inventory', context),
+                          _buildQuickButton('assets/images/analysis.png',
                               'Buy & Sell Reports', context),
-                          _buildQuickButton('assets/icons/alert.png',
+                          _buildQuickButton('assets/images/alert.png',
                               'Low Stock Alerts', context),
+                          _buildQuickButton(
+                              'assets/images/notes.png', 'Notes', context),
                         ],
                       ),
                     ],
@@ -150,11 +162,11 @@ class HomePage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _buildOverviewTile('assets/icons/taka.png',
+                      _buildOverviewTile('assets/images/taka.png',
                           'Total Sales Today', '৳ 0.00'),
-                      _buildOverviewTile('assets/icons/purchase.png',
+                      _buildOverviewTile('assets/images/purchase.png',
                           'Total Purchase Today', '৳ 0.00'),
-                      _buildOverviewTile('assets/icons/stock.png',
+                      _buildOverviewTile('assets/images/stock.png',
                           'Current Stock Value', '৳ 0.00'),
                     ],
                   ),
@@ -171,6 +183,7 @@ class HomePage extends StatelessWidget {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.green,
         unselectedItemColor: Colors.black,
+        currentIndex: _selectedIndex,
         onTap: (index) {
           if (index == 1) {
             Navigator.pushReplacement(
@@ -183,6 +196,12 @@ class HomePage extends StatelessWidget {
               context,
               MaterialPageRoute(
                   builder: (context) => const ReportAnalyticsPage()),
+            );
+          }
+          if (index == 3) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfilePage()),
             );
           }
         },
@@ -198,7 +217,6 @@ class HomePage extends StatelessWidget {
     );
   }
 }
-
 
 // FINAL FIX: Prevent Right Overflow in Overview Panel
 Widget _buildOverviewTile(String iconPath, String title, String value) {
@@ -256,32 +274,37 @@ Widget _buildQuickButton(String iconPath, String label, BuildContext context) {
               builder: (context) =>
                   const NewProductPage()), // Fix the class name
         );
-      } else if (label == 'Inventory') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => const InventoryPage()), // Fix applied here
-        );
-      }
-      else if (label == 'Add New Item') {
+      } else if (label == 'Add New Item') {
         Navigator.push(
           context,
           MaterialPageRoute(
               builder: (context) => const NewItemPage()), // Fix applied here
         );
-      }
-      else if (label == 'Buy & Sell Reports') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => const NewItemPage()), // Fix applied here
-        );
-      }
-        else if (label == 'Sell Items') {
+      } else if (label == 'Sell Items') {
         Navigator.push(
           context,
           MaterialPageRoute(
               builder: (context) => const SellPage()), // Fix applied here
+        );
+      } else if (label == 'Inventory') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const InventoryPage()),
+        );
+      } else if (label == 'Buy & Sell Reports') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ReportAnalyticsPage()),
+        );
+      } else if (label == 'Low Stock Alerts') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LowStockPage()),
+        );
+      } else if (label == 'Notes') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const NotesPage()),
         );
       }
     },

@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
-import 'package:gudam_guru/home.dart';
+
+import 'homepage.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -44,11 +44,11 @@ class LoginPage extends StatelessWidget {
                     _buildTextField('Password', isPassword: true),
                     const SizedBox(height: 30),
                     _buildButton(context, 'Login', Colors.green, () {
-                       Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const HomePage()),
-                          );
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const HomePage()),
+                      );
                     }),
                   ],
                 ),
@@ -60,8 +60,6 @@ class LoginPage extends StatelessWidget {
     );
   }
 }
-
-
 
 Widget _buildTextField(String hint, {bool isPassword = false}) {
   return TextField(

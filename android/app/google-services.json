@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "289390389789",
+    "project_id": "gudamguru",
+    "storage_bucket": "gudamguru.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:289390389789:android:8917536a8821c83b16f4f4",
+        "android_client_info": {
+          "package_name": "com.example.gudam_guru"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBe_aZM79syT9SfQeEvgB4F5y7WZt-HpM4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
