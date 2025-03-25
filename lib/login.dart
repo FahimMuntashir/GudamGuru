@@ -1,9 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 import 'homepage.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final TextEditingController userIdController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  Future<void> loginUser() async {
+    var url = Uri.parse('https://yourserver.com/login.php');
+    var response = await http.post(url, body: {
+      'user_id': userIdController.text,
+      'password': passwordController.text,
+    });
+
+    var data = json.decode(response.body);
+    if (data['status'] == 'success') {
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (context) => HomePage()));
+    } else {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(data['message'])));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,17 +66,10 @@ class LoginPage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 40),
                 child: Column(
                   children: [
-                    _buildTextField('User ID'),
-                    const SizedBox(height: 15),
-                    _buildTextField('Password', isPassword: true),
-                    const SizedBox(height: 30),
-                    _buildButton(context, 'Login', Colors.green, () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const HomePage()),
-                      );
-                    }),
+                    _buildTextField(userIdController, 'User ID'),
+                    _buildTextField(passwordController, 'Password',
+                        isPassword: true),
+                    ElevatedButton(onPressed: loginUser, child: Text('Login')),
                   ],
                 ),
               ),
@@ -61,15 +81,20 @@ class LoginPage extends StatelessWidget {
   }
 }
 
-Widget _buildTextField(String hint, {bool isPassword = false}) {
-  return TextField(
-    obscureText: isPassword,
-    decoration: InputDecoration(
-      filled: true,
-      fillColor: Colors.white,
-      hintText: hint,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+Widget _buildTextField(TextEditingController controller, String hint,
+    {bool isPassword = false}) {
+  return Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: TextField(
+      controller: controller,
+      obscureText: isPassword,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        hintText: hint,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
     ),
   );

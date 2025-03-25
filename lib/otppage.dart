@@ -1,8 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 import 'login.dart';
 
-class OTPPage extends StatelessWidget {
-  const OTPPage({super.key});
+class OTPPage extends StatefulWidget {
+  final String phone;
+  const OTPPage({super.key, required this.phone});
+
+  @override
+  State<OTPPage> createState() => _OTPPageState();
+}
+
+class _OTPPageState extends State<OTPPage> {
+  final TextEditingController otpController = TextEditingController();
+
+  Future<void> verifyOTP() async {
+    var url = Uri.parse('https://yourserver.com/verify_otp.php');
+    var response = await http.post(url, body: {
+      'phone': widget.phone,
+      'otp': otpController.text,
+    });
+
+    var data = json.decode(response.body);
+    if (data['status'] == 'success') {
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (context) => LoginPage()));
+    } else {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(data['message'])));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,34 +66,15 @@ class OTPPage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 40),
                 child: Column(
                   children: [
-                    _buildTextField('Enter OTP'),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                            // Add your resend OTP logic here
-                            print("Resend OTP tapped");
-                          },
-                          child: const Text(
-                            'Resend',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    _buildButton(context, 'Confirm', Colors.purple, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const LoginPage()),
-                      );
-                    }),
+                    _buildTextField(otpController, 'Enter OTP'),
+                    ElevatedButton(
+                        onPressed: verifyOTP, child: Text('Verify OTP')),
+                    TextButton(
+                      onPressed: () {
+                        // Optional: Implement resend logic here
+                      },
+                      child: Text('Resend OTP'),
+                    )
                   ],
                 ),
               ),
@@ -77,15 +86,18 @@ class OTPPage extends StatelessWidget {
   }
 }
 
-Widget _buildTextField(String hint, {bool isPassword = false}) {
-  return TextField(
-    obscureText: isPassword,
-    decoration: InputDecoration(
-      filled: true,
-      fillColor: Colors.white,
-      hintText: hint,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+Widget _buildTextField(TextEditingController controller, String hint) {
+  return Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        hintText: hint,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
     ),
   );

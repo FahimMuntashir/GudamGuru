@@ -1,9 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 import 'otppage.dart';
 
-class SignUpPage extends StatelessWidget {
+class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
+
+  @override
+  State<SignUpPage> createState() => _SignUpPageState();
+}
+
+class _SignUpPageState extends State<SignUpPage> {
+  final TextEditingController compController = TextEditingController();
+  final TextEditingController userIdController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController repasswordController = TextEditingController();
+
+  Future<void> registerUser() async {
+    var url = Uri.parse('https://yourserver.com/register.php');
+    var response = await http.post(url, body: {
+      'company': compController.text,
+      'user_id': userIdController.text,
+      'phone': phoneController.text,
+      'password': passwordController.text,
+      'repassword': repasswordController.text,
+    });
+    if (passwordController.text != repasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Password did not match')),
+      );
+    } else {
+      var data = json.decode(response.body);
+      if (data['status'] == 'success') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OTPPage(phone: phoneController.text),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['message'])),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,30 +81,18 @@ class SignUpPage extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 40),
                         child: Column(
                           children: [
-                            _buildTextField('Company Name'),
-                            const SizedBox(height: 15),
-                            _buildTextField('User ID'),
-                            const SizedBox(height: 15),
-                            _buildTextField('Mobile Number'),
-                            const SizedBox(height: 15),
-                            _buildTextField('Password', isPassword: true),
-                            const SizedBox(height: 15),
-                            _buildTextField('Confirm Password',
+                            _buildTextField(compController, 'Company Name'),
+                            _buildTextField(userIdController, 'User ID'),
+                            _buildTextField(phoneController, 'Phone Number'),
+                            _buildTextField(passwordController, 'Password',
                                 isPassword: true),
-                            const SizedBox(height: 30),
-                            _buildButton(
-                              context,
-                              'sign up',
-                              Colors.green,
-                              () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => const OTPPage()),
-                                );
-                              },
+                            _buildTextField(
+                                repasswordController, 'Confirm Password',
+                                isPassword: true),
+                            ElevatedButton(
+                              onPressed: registerUser,
+                              child: Text('Sign Up'),
                             ),
-                            const SizedBox(height: 10),
                           ],
                         ),
                       ),
@@ -87,15 +118,20 @@ class SignUpPage extends StatelessWidget {
   }
 }
 
-Widget _buildTextField(String hint, {bool isPassword = false}) {
-  return TextField(
-    obscureText: isPassword,
-    decoration: InputDecoration(
-      filled: true,
-      fillColor: Colors.white,
-      hintText: hint,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+Widget _buildTextField(TextEditingController controller, String hint,
+    {bool isPassword = false}) {
+  return Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: TextField(
+      controller: controller,
+      obscureText: isPassword,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        hintText: hint,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
     ),
   );
