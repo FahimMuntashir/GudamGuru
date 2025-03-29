@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:provider/provider.dart';
 
-import 'otppage.dart';
+import 'database/database_helper.dart';
+import 'providers/user_provider.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -17,33 +17,77 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController repasswordController = TextEditingController();
+  bool _isLoading = false;
 
   Future<void> registerUser() async {
-    var url = Uri.parse('https://yourserver.com/register.php');
-    var response = await http.post(url, body: {
-      'company': compController.text,
-      'user_id': userIdController.text,
-      'phone': phoneController.text,
-      'password': passwordController.text,
-      'repassword': repasswordController.text,
-    });
+    if (compController.text.isEmpty ||
+        userIdController.text.isEmpty ||
+        phoneController.text.isEmpty ||
+        passwordController.text.isEmpty ||
+        repasswordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
+
     if (passwordController.text != repasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Password did not match')),
+        const SnackBar(content: Text('Passwords do not match')),
       );
-    } else {
-      var data = json.decode(response.body);
-      if (data['status'] == 'success') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OTPPage(phone: phoneController.text),
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      print('Starting user registration process...');
+      // First, try to initialize the database
+      final db = await DatabaseHelper.instance.database;
+      print('Database initialized successfully');
+
+      final success = await context.read<UserProvider>().createUser({
+        'id': userIdController.text,
+        'password': passwordController.text,
+        'company_name': compController.text,
+        'phone': phoneController.text,
+      });
+
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account created successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context);
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'User ID already exists. Please choose a different one.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error during registration: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['message'])),
-        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -89,10 +133,15 @@ class _SignUpPageState extends State<SignUpPage> {
                             _buildTextField(
                                 repasswordController, 'Confirm Password',
                                 isPassword: true),
-                            ElevatedButton(
-                              onPressed: registerUser,
-                              child: Text('Sign Up'),
-                            ),
+                            const SizedBox(height: 20),
+                            _isLoading
+                                ? const CircularProgressIndicator()
+                                : _buildButton(
+                                    context,
+                                    'Sign Up',
+                                    Colors.green,
+                                    registerUser,
+                                  ),
                           ],
                         ),
                       ),
@@ -116,45 +165,45 @@ class _SignUpPageState extends State<SignUpPage> {
       ),
     );
   }
-}
 
-Widget _buildTextField(TextEditingController controller, String hint,
-    {bool isPassword = false}) {
-  return Padding(
-    padding: const EdgeInsets.all(8.0),
-    child: TextField(
-      controller: controller,
-      obscureText: isPassword,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        hintText: hint,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+  Widget _buildTextField(TextEditingController controller, String hint,
+      {bool isPassword = false}) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          hintText: hint,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-Widget _buildButton(
-    BuildContext context, String text, Color color, VoidCallback onPressed) {
-  return ElevatedButton(
-    style: ElevatedButton.styleFrom(
-      backgroundColor: color,
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(30),
+  Widget _buildButton(
+      BuildContext context, String text, Color color, VoidCallback onPressed) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
       ),
-    ),
-    onPressed: onPressed,
-    child: Text(
-      text,
-      style: const TextStyle(
-        fontSize: 16,
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
+      onPressed: onPressed,
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 16,
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

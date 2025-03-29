@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:gudam_guru/profile_page.dart';
 import 'homepage.dart';
 import 'inventory.dart';
 import 'reportanalytics.dart';
-import 'profile.dart';
+
 
 class NewProductPage extends StatefulWidget {
   const NewProductPage({super.key});

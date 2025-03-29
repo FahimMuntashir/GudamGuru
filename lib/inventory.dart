@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import 'homepage.dart';
+import 'package:gudam_guru/profile_page.dart';
+import 'providers/product_provider.dart';
+import 'providers/user_provider.dart';
 import 'reportanalytics.dart';
-import 'profile.dart';
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
@@ -13,57 +17,48 @@ class InventoryPage extends StatefulWidget {
 class _InventoryPageState extends State<InventoryPage> {
   int _selectedIndex = 1;
   bool isEditing = false;
-  List<Map<String, dynamic>> inventoryData = [
-    {
-      'category': 'Category A',
-      'products': [
-        {
-          'id': '101',
-          'name': 'Product 1',
-          'quantity': '10',
-          'unit': 'KG',
-          'price': '50',
-          'brand': 'Brand A',
-          'stock': '500',
-          'lowStock': '5',
-          'description': 'Product description',
-          'expanded': false
-        },
-      ]
-    },
-    {
-      'category': 'Category B',
-      'products': [
-        {
-          'id': '102',
-          'name': 'Product 2',
-          'quantity': '5',
-          'unit': 'KG',
-          'price': '40',
-          'brand': 'Brand B',
-          'stock': '200',
-          'lowStock': '3',
-          'description': 'Another product description',
-          'expanded': false
-        },
-        {
-          'id': '103',
-          'name': 'Product 3',
-          'quantity': '8',
-          'unit': 'KG',
-          'price': '30',
-          'brand': 'Brand C',
-          'stock': '300',
-          'lowStock': '4',
-          'description': 'More product info',
-          'expanded': false
-        },
-      ]
-    },
-  ];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // Load initial data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProductProvider>().loadProducts();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
+    final productProvider = context.watch<ProductProvider>();
+    final products = productProvider.products;
+
+    // Filter products based on search query
+    final filteredProducts = products.where((product) {
+      final name = product['name'].toString().toLowerCase();
+      final category = product['category']?.toString().toLowerCase() ?? '';
+      final searchLower = _searchQuery.toLowerCase();
+      return name.contains(searchLower) || category.contains(searchLower);
+    }).toList();
+
+    // Group products by category
+    final groupedProducts = <String, List<Map<String, dynamic>>>{};
+    for (var product in filteredProducts) {
+      final category = product['category']?.toString() ?? 'Uncategorized';
+      if (!groupedProducts.containsKey(category)) {
+        groupedProducts[category] = [];
+      }
+      groupedProducts[category]!.add(product);
+    }
+
     return Scaffold(
       body: Stack(
         children: [
@@ -111,9 +106,9 @@ class _InventoryPageState extends State<InventoryPage> {
                               'assets/images/logo.png',
                               width: 150,
                             ),
-                            const Text(
-                              'Company name',
-                              style: TextStyle(
+                            Text(
+                              userProvider.companyName ?? 'Company Name',
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -145,8 +140,9 @@ class _InventoryPageState extends State<InventoryPage> {
                         ),
                       ),
                       const SizedBox(height: 10),
+
                       // Inventory List by Category
-                      _buildInventoryList(),
+                      _buildInventoryList(groupedProducts),
                     ],
                   ),
                 ),
@@ -197,30 +193,37 @@ class _InventoryPageState extends State<InventoryPage> {
 
   Widget _buildSearchBar() {
     return TextField(
+      controller: _searchController,
       decoration: InputDecoration(
-        hintText: 'Search',
+        hintText: 'Search products...',
         prefixIcon: const Icon(Icons.search),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
+      onChanged: (value) {
+        setState(() {
+          _searchQuery = value;
+        });
+      },
     );
   }
 
-  Widget _buildInventoryList() {
+  Widget _buildInventoryList(
+      Map<String, List<Map<String, dynamic>>> groupedProducts) {
     return Column(
-      children: inventoryData.map((category) {
+      children: groupedProducts.entries.map((entry) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
               child: Text(
-                category['category'],
+                entry.key,
                 style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
             Column(
-              children: category['products'].map<Widget>((product) {
+              children: entry.value.map<Widget>((product) {
                 return Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
@@ -231,18 +234,24 @@ class _InventoryPageState extends State<InventoryPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        title: Text('${product['id']} - ${product['name']}'),
+                        title: Text(product['name']),
+                        subtitle: Text('Price: ৳${product['selling_price']}'),
                         trailing: Text(
-                            'Quantity: ${product['quantity']} ${product['unit']}'),
+                          'Stock: ${product['quantity']}',
+                          style: TextStyle(
+                            color: product['quantity'] <=
+                                    product['min_stock_level']
+                                ? Colors.red
+                                : Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         onTap: () {
-                          setState(() {
-                            product['expanded'] =
-                                !(product['expanded'] ?? false);
-                          });
+                          if (isEditing) {
+                            _showEditDialog(product);
+                          }
                         },
                       ),
-                      if (product['expanded'] ?? false)
-                        _buildExpandedDetails(product),
                     ],
                   ),
                 );
@@ -254,44 +263,67 @@ class _InventoryPageState extends State<InventoryPage> {
     );
   }
 
-  Widget _buildExpandedDetails(Map<String, dynamic> product) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 5,
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-                'Product ID: ${product['id']}  |  Quantity: ${product['quantity']} ${product['unit']}'),
-            Text(
-                'Product Name: ${product['name']}  |  Price/unit: ${product['price']}'),
-            Text(
-                'Brand Name: ${product['brand']}  |  Total Stock Value: ${product['stock']}'),
-            Text('Set Low Stock Alert: ${product['lowStock']}'),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.blue[100],
-                borderRadius: BorderRadius.circular(5),
+  void _showEditDialog(Map<String, dynamic> product) {
+    final TextEditingController nameController =
+        TextEditingController(text: product['name']);
+    final TextEditingController priceController =
+        TextEditingController(text: product['selling_price'].toString());
+    final TextEditingController quantityController =
+        TextEditingController(text: product['quantity'].toString());
+    final TextEditingController minStockController =
+        TextEditingController(text: product['min_stock_level'].toString());
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Product'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Product Name'),
               ),
-              child: Text(product['description'],
-                  style: const TextStyle(color: Colors.black54)),
-            ),
-          ],
+              TextField(
+                controller: priceController,
+                decoration: const InputDecoration(labelText: 'Selling Price'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: quantityController,
+                decoration: const InputDecoration(labelText: 'Quantity'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: minStockController,
+                decoration:
+                    const InputDecoration(labelText: 'Minimum Stock Level'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final updatedProduct = {
+                ...product,
+                'name': nameController.text,
+                'selling_price': double.parse(priceController.text),
+                'quantity': int.parse(quantityController.text),
+                'min_stock_level': int.parse(minStockController.text),
+              };
+              context.read<ProductProvider>().updateProduct(updatedProduct);
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }

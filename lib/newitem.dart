@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'homepage.dart';
 import 'inventory.dart';
 import 'reportanalytics.dart';
-import 'profile.dart';
+
+import 'package:gudam_guru/profile_page.dart';
+
 
 class NewItemPage extends StatefulWidget {
   const NewItemPage({super.key});

@@ -1,10 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import 'database/database_helper.dart';
+import 'homepage.dart';
 import 'login.dart';
+import 'providers/product_provider.dart';
+import 'providers/theme_provider.dart';
+import 'providers/user_provider.dart';
 import 'signUpPage.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize database
+  try {
+    await DatabaseHelper.instance.database;
+    print('Database initialized in main');
+  } catch (e) {
+    print('Error initializing database in main: $e');
+  }
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -12,9 +37,25 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: const LandingPage(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            primarySwatch: Colors.green,
+            useMaterial3: true,
+            brightness:
+                themeProvider.isDarkMode ? Brightness.dark : Brightness.light,
+          ),
+          home: Consumer<UserProvider>(
+            builder: (context, userProvider, child) {
+              return userProvider.isAuthenticated
+                  ? const HomePage()
+                  : const LandingPage();
+            },
+          ),
+        );
+      },
     );
   }
 }
@@ -30,7 +71,7 @@ class LandingPage extends StatelessWidget {
           // Background image
           Positioned.fill(
             child: Image.asset(
-              'assets/images/background.png', // Add this image in your assets folder
+              'assets/images/background.png',
               fit: BoxFit.cover,
               opacity: const AlwaysStoppedAnimation(0.2),
             ),
@@ -41,13 +82,13 @@ class LandingPage extends StatelessWidget {
               children: [
                 // Logo
                 Image.asset(
-                  'assets/images/logo.png', // Add your logo image in assets
+                  'assets/images/logo.png',
                   width: 400,
                 ),
                 const SizedBox(height: 30),
                 // App Name
                 const Text(
-                  '',
+                  'Gudam Guru',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -55,7 +96,13 @@ class LandingPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 5),
-
+                const Text(
+                  'Stock Management System',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                ),
                 const SizedBox(height: 40),
                 // Buttons
                 Row(

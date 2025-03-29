@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:gudam_guru/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'homepage.dart';
 import 'inventory.dart';
 import 'reportanalytics.dart';
-import 'profile.dart';
+// import 'profile.dart';
 
 class NotesPage extends StatefulWidget {
   const NotesPage({super.key});

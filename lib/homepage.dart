@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import 'newproduct.dart';
-import 'newitem.dart';
-import 'sell.dart';
 import 'inventory.dart';
-import 'reportanalytics.dart';
-import 'profile.dart';
 import 'lowstock.dart';
+import 'newitem.dart';
+import 'newproduct.dart';
 import 'notes.dart';
+import 'profile_page.dart';
+import 'providers/product_provider.dart';
+import 'providers/user_provider.dart';
+import 'reportanalytics.dart';
+import 'sell.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,15 +21,30 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load initial data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProductProvider>().loadProducts();
+      context.read<ProductProvider>().loadDashboardStats();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
+    final productProvider = context.watch<ProductProvider>();
+    final stats = productProvider.dashboardStats;
+
     return Scaffold(
       body: Stack(
         children: [
           // Background image
           Positioned.fill(
             child: Image.asset(
-              'assets/images/background.png', // Add this image in your assets folder
+              'assets/images/background.png',
               fit: BoxFit.cover,
               opacity: const AlwaysStoppedAnimation(0.2),
             ),
@@ -60,9 +78,9 @@ class _HomePageState extends State<HomePage> {
                         'assets/images/logo.png',
                         width: 150,
                       ),
-                      const Text(
-                        'Company name',
-                        style: TextStyle(
+                      Text(
+                        userProvider.companyName ?? 'Company Name',
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -162,12 +180,21 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _buildOverviewTile('assets/images/taka.png',
-                          'Total Sales Today', '৳ 0.00'),
-                      _buildOverviewTile('assets/images/purchase.png',
-                          'Total Purchase Today', '৳ 0.00'),
-                      _buildOverviewTile('assets/images/stock.png',
-                          'Current Stock Value', '৳ 0.00'),
+                      _buildOverviewTile(
+                        'assets/images/taka.png',
+                        'Total Sales Today',
+                        '৳ ${stats?['total_sales_today']?.toStringAsFixed(2) ?? '0.00'}',
+                      ),
+                      _buildOverviewTile(
+                        'assets/images/purchase.png',
+                        'Total Products',
+                        '${stats?['total_products'] ?? 0}',
+                      ),
+                      _buildOverviewTile(
+                        'assets/images/stock.png',
+                        'Low Stock Items',
+                        '${stats?['low_stock_items'] ?? 0}',
+                      ),
                     ],
                   ),
                 ),
@@ -216,9 +243,87 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+  Widget _buildQuickButton(
+      String iconPath, String label, BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        switch (label) {
+          case 'Add New Product':
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const NewProductPage()),
+            );
+            break;
+          case 'Add New Item':
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const NewItemPage()),
+            );
+            break;
+          case 'Sell Items':
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SellPage()),
+            );
+            break;
+          case 'Inventory':
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const InventoryPage()),
+            );
+            break;
+          case 'Buy & Sell Reports':
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const ReportAnalyticsPage()),
+            );
+            break;
+          case 'Low Stock Alerts':
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const LowStockPage()),
+            );
+            break;
+          case 'Notes':
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const NotesPage()),
+            );
+            break;
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 5,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(iconPath, width: 40, height: 40),
+            const SizedBox(height: 5),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-// FINAL FIX: Prevent Right Overflow in Overview Panel
 Widget _buildOverviewTile(String iconPath, String title, String value) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 10),
@@ -248,99 +353,16 @@ Widget _buildOverviewTile(String iconPath, String title, String value) {
             ),
           ),
           const SizedBox(width: 10),
-          Flexible(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
             ),
           ),
         ],
       ),
-    ),
-  );
-}
-
-//quicl panel
-Widget _buildQuickButton(String iconPath, String label, BuildContext context) {
-  return GestureDetector(
-    onTap: () {
-      if (label == 'Add New Product') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) =>
-                  const NewProductPage()), // Fix the class name
-        );
-      } else if (label == 'Add New Item') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => const NewItemPage()), // Fix applied here
-        );
-      } else if (label == 'Sell Items') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => const SellPage()), // Fix applied here
-        );
-      } else if (label == 'Inventory') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const InventoryPage()),
-        );
-      } else if (label == 'Buy & Sell Reports') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ReportAnalyticsPage()),
-        );
-      } else if (label == 'Low Stock Alerts') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const LowStockPage()),
-        );
-      } else if (label == 'Notes') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const NotesPage()),
-        );
-      }
-    },
-    child: Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 5,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Image.asset(iconPath, width: 40, height: 40),
-              const SizedBox(height: 5),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Text(label,
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        ),
-      ],
     ),
   );
 }
