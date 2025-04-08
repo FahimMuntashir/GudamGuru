@@ -1,48 +1,50 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-import 'UserSession.dart';
-import 'homepage.dart';
+import 'login.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class OTPPage extends StatefulWidget {
+  final String phone;
+  const OTPPage({super.key, required this.phone});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<OTPPage> createState() => _OTPPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final TextEditingController userIdController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+class _OTPPageState extends State<OTPPage> {
+  final TextEditingController otpController = TextEditingController();
 
-  Future<void> loginUser() async {
-    var url = Uri.parse('http://192.168.0.10/gudamguru_api/login.php');
+  // Future<void> verifyOTP() async {
+  //   var url = Uri.parse('https://yourserver.com/verify_otp.php');
+  //   var response = await http.post(url, body: {
+  //     'phone': widget.phone,
+  //     'otp': otpController.text,
+  //   });
 
-    var response = await http.post(url, body: {
-      'user_id': userIdController.text,
-      'password': passwordController.text,
-    });
-
-    print('Response status: ${response.statusCode}');
-    print('Response body: ${response.body}');
-
-    var data = json.decode(response.body);
-
-    if (data['status'] == 'success') {
-      UserSession().companyId = data['data']['id'];
-      UserSession().userId = data['data']['user_id'];
-      UserSession().companyName = data['data']['company_name'];
-      UserSession().phone = data['data']['phone'];
+  //   var data = json.decode(response.body);
+  //   if (data['status'] == 'success') {
+  //     Navigator.pushReplacement(
+  //         context, MaterialPageRoute(builder: (context) => LoginPage()));
+  //   } else {
+  //     ScaffoldMessenger.of(context)
+  //         .showSnackBar(SnackBar(content: Text(data['message'])));
+  //   }
+  //   if (otpController.text == '111111') {
+  //     Navigator.pushReplacement(
+  //         context, MaterialPageRoute(builder: (context) => LoginPage()));
+  //   } else {
+  //     ScaffoldMessenger.of(context)
+  //         .showSnackBar(SnackBar(content: Text('Success')));
+  //   }
+  // }
+  Future<void> verifyOTP() async {
+    if (otpController.text == '111111') {
       Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
+          context, MaterialPageRoute(builder: (context) => LoginPage()));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(data['message'])),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Invalid OTP')));
     }
   }
 
@@ -54,8 +56,8 @@ class _LoginPageState extends State<LoginPage> {
           Positioned.fill(
             child: Image.asset(
               'assets/images/background.png',
-              fit: BoxFit.cover,
               opacity: const AlwaysStoppedAnimation(0.2),
+              fit: BoxFit.cover,
             ),
           ),
           Positioned(
@@ -73,17 +75,22 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               Image.asset(
                 'assets/images/logo.png',
-                width: 150,
+                width: 300,
               ),
               const SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 40),
                 child: Column(
                   children: [
-                    _buildTextField(userIdController, 'User Name'),
-                    _buildTextField(passwordController, 'Password',
-                        isPassword: true),
-                    ElevatedButton(onPressed: loginUser, child: Text('Login')),
+                    _buildTextField(otpController, 'Enter OTP'),
+                    ElevatedButton(
+                        onPressed: verifyOTP, child: Text('Verify OTP')),
+                    TextButton(
+                      onPressed: () {
+                        // Optional: Implement resend logic here
+                      },
+                      child: Text('Resend OTP'),
+                    )
                   ],
                 ),
               ),
@@ -95,13 +102,11 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-Widget _buildTextField(TextEditingController controller, String hint,
-    {bool isPassword = false}) {
+Widget _buildTextField(TextEditingController controller, String hint) {
   return Padding(
     padding: const EdgeInsets.all(8.0),
     child: TextField(
       controller: controller,
-      obscureText: isPassword,
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.white,

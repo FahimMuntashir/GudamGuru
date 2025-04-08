@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:gudam_guru/profile_page.dart';
 import 'homepage.dart';
 import 'inventory.dart';
 import 'reportanalytics.dart';
-// import 'profile.dart';
+import 'profile.dart';
+import 'UserSession.dart';
 
 class SellPage extends StatefulWidget {
   const SellPage({super.key});
@@ -105,10 +105,12 @@ class _SellPageState extends State<SellPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Image.asset('assets/images/logo.png', width: 150),
-                            const Text(
-                              'Company name',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            Text(
+                              (UserSession().companyName!),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),

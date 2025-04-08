@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'homepage.dart';
 import 'inventory.dart';
 import 'reportanalytics.dart';
-import 'package:gudam_guru/profile_page.dart';
-
+import 'profile.dart';
+import 'UserSession.dart';
 
 class LowStockPage extends StatefulWidget {
   const LowStockPage({super.key});
@@ -85,9 +85,9 @@ class _LowStockPageState extends State<LowStockPage> {
                               'assets/images/logo.png',
                               width: 150,
                             ),
-                            const Text(
-                              'Company name',
-                              style: TextStyle(
+                            Text(
+                              (UserSession().companyName!),
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
