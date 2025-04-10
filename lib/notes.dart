@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+
+import 'UserSession.dart';
+import 'database_helper.dart';
 import 'homepage.dart';
 import 'inventory.dart';
-import 'reportanalytics.dart';
 import 'profile.dart';
-import 'UserSession.dart';
+import 'reportanalytics.dart';
 
 class NotesPage extends StatefulWidget {
   const NotesPage({super.key});
@@ -15,9 +15,10 @@ class NotesPage extends StatefulWidget {
 }
 
 class _NotesPageState extends State<NotesPage> {
-  List<Map<String, String>> notes = [];
+  List<Map<String, dynamic>> notes = [];
   final TextEditingController _noteController = TextEditingController();
   int? editingIndex;
+  final DatabaseHelper _dbHelper = DatabaseHelper();
 
   @override
   void initState() {
@@ -26,63 +27,63 @@ class _NotesPageState extends State<NotesPage> {
   }
 
   Future<void> _loadNotes() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? storedNotes = prefs.getString('notes');
-    if (storedNotes != null) {
+    try {
+      List<Map<String, dynamic>> loadedNotes = await _dbHelper.getAllNotes();
+      print('Loaded notes: ${loadedNotes.length}'); // Debug log
       setState(() {
-        notes = List<Map<String, String>>.from(json.decode(storedNotes));
+        notes = loadedNotes.map((note) {
+          return {
+            'id': note['id'],
+            'text': note['text'],
+            'timestamp': note['timestamp'],
+            'completed': note['completed'] == 1 ? 'true' : 'false'
+          };
+        }).toList();
       });
+    } catch (e) {
+      print('Error loading notes: $e'); // Debug log
     }
   }
 
-  Future<void> _saveNotes() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString('notes', json.encode(notes));
-  }
-
-  void _addOrUpdateNote() {
+  Future<void> _addOrUpdateNote() async {
     if (_noteController.text.isNotEmpty) {
-      setState(() {
+      try {
         if (editingIndex == null) {
-          notes.add({
-            'text': _noteController.text,
-            'timestamp': DateTime.now().toString(),
-            'completed': 'false'
-          });
+          print('Adding new note: ${_noteController.text}'); // Debug log
+          await _dbHelper
+              .insertNote({'text': _noteController.text, 'completed': 'false'});
         } else {
-          notes[editingIndex!] = {
+          print('Updating note at index $editingIndex'); // Debug log
+          await _dbHelper.updateNote(notes[editingIndex!]['id'], {
             'text': _noteController.text,
-            'timestamp': DateTime.now().toString(),
-            'completed': notes[editingIndex!]['completed'] ?? 'false'
-          };
+            'timestamp': DateTime.now().toIso8601String()
+          });
           editingIndex = null;
         }
         _noteController.clear();
-      });
-      _saveNotes();
+        await _loadNotes();
+      } catch (e) {
+        print('Error adding/updating note: $e'); // Debug log
+      }
     }
   }
 
-  void _toggleCompleteNote(int index) {
-    setState(() {
-      notes[index]['completed'] =
-          notes[index]['completed'] == 'true' ? 'false' : 'true';
-    });
-    _saveNotes();
+  Future<void> _toggleCompleteNote(int index) async {
+    await _dbHelper.updateNote(notes[index]['id'],
+        {'completed': notes[index]['completed'] == 'true' ? 'false' : 'true'});
+    _loadNotes();
   }
 
   void _editNote(int index) {
     setState(() {
-      _noteController.text = notes[index]['text']!;
+      _noteController.text = notes[index]['text'];
       editingIndex = index;
     });
   }
 
-  void _deleteNote(int index) {
-    setState(() {
-      notes.removeAt(index);
-    });
-    _saveNotes();
+  Future<void> _deleteNote(int index) async {
+    await _dbHelper.deleteNote(notes[index]['id']);
+    _loadNotes();
   }
 
   @override
@@ -187,12 +188,12 @@ class _NotesPageState extends State<NotesPage> {
                           child: Column(
                             children: notes.asMap().entries.map((entry) {
                               int index = entry.key;
-                              Map<String, String> note = entry.value;
+                              Map<String, dynamic> note = entry.value;
                               bool isCompleted = note['completed'] == 'true';
                               return Card(
                                 child: ListTile(
                                   title: Text(
-                                    note['text']!,
+                                    note['text'],
                                     style: TextStyle(
                                       decoration: isCompleted
                                           ? TextDecoration.lineThrough
@@ -202,7 +203,7 @@ class _NotesPageState extends State<NotesPage> {
                                           : Colors.black,
                                     ),
                                   ),
-                                  subtitle: Text(note['timestamp']!),
+                                  subtitle: Text(note['timestamp']),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
