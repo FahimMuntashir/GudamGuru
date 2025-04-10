@@ -2,11 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
 import 'UserSession.dart';
 import 'homepage.dart';
 import 'inventory.dart';
 import 'login.dart';
+import 'providers/theme_provider.dart';
 import 'reportanalytics.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -18,7 +20,6 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   int _selectedIndex = 3;
-  bool isDarkMode = false;
   String selectedLanguage = 'English';
   final List<String> languages = ['English', 'Bangla'];
 
@@ -256,7 +257,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Profile'),
+      ),
       body: Stack(
         children: [
           Positioned.fill(
@@ -339,7 +345,10 @@ class _ProfilePageState extends State<ProfilePage> {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.black,
+        unselectedItemColor:
+            themeProvider.isDarkMode ? Colors.white70 : Colors.black,
+        backgroundColor:
+            themeProvider.isDarkMode ? Colors.grey[900] : Colors.white,
         currentIndex: _selectedIndex,
         onTap: (index) {
           if (index == 0) {
@@ -375,12 +384,14 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildUserInfo() {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: themeProvider.isDarkMode ? Colors.grey[800] : Colors.white,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
@@ -392,13 +403,48 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         child: Column(
           children: [
-            ListTile(title: Text("User Name: ${UserSession().userId}")),
-            ListTile(title: Text("Contact Number: ${UserSession().phone}")),
-            ListTile(title: Text("Company Name: ${UserSession().companyName}")),
-            ListTile(title: Text("Company ID: ${UserSession().companyId}")),
-            Divider(),
             ListTile(
-              title: const Text('Change Password'),
+              title: Text(
+                "User Name: ${UserSession().userId}",
+                style: TextStyle(
+                    color:
+                        themeProvider.isDarkMode ? Colors.white : Colors.black),
+              ),
+            ),
+            ListTile(
+              title: Text(
+                "Contact Number: ${UserSession().phone}",
+                style: TextStyle(
+                    color:
+                        themeProvider.isDarkMode ? Colors.white : Colors.black),
+              ),
+            ),
+            ListTile(
+              title: Text(
+                "Company Name: ${UserSession().companyName}",
+                style: TextStyle(
+                    color:
+                        themeProvider.isDarkMode ? Colors.white : Colors.black),
+              ),
+            ),
+            ListTile(
+              title: Text(
+                "Company ID: ${UserSession().companyId}",
+                style: TextStyle(
+                    color:
+                        themeProvider.isDarkMode ? Colors.white : Colors.black),
+              ),
+            ),
+            Divider(
+                color:
+                    themeProvider.isDarkMode ? Colors.white70 : Colors.black),
+            ListTile(
+              title: Text(
+                'Change Password',
+                style: TextStyle(
+                    color:
+                        themeProvider.isDarkMode ? Colors.white : Colors.black),
+              ),
               trailing: IconButton(
                 icon: const Icon(Icons.lock),
                 onPressed: () => _showChangePasswordDialog(context),
@@ -411,12 +457,14 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildAccountSettings() {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: themeProvider.isDarkMode ? Colors.grey[800] : Colors.white,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
@@ -429,13 +477,24 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           children: [
             ListTile(
-              title: const Text('Language Selection'),
+              title: Text(
+                'Language Selection',
+                style: TextStyle(
+                    color:
+                        themeProvider.isDarkMode ? Colors.white : Colors.black),
+              ),
               trailing: DropdownButton<String>(
                 value: selectedLanguage,
                 items: languages.map((String language) {
                   return DropdownMenuItem<String>(
                     value: language,
-                    child: Text(language),
+                    child: Text(
+                      language,
+                      style: TextStyle(
+                          color: themeProvider.isDarkMode
+                              ? Colors.white
+                              : Colors.black),
+                    ),
                   );
                 }).toList(),
                 onChanged: (String? newValue) {
@@ -446,12 +505,15 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             SwitchListTile(
-              title: const Text('Dark Mode'),
-              value: isDarkMode,
+              title: Text(
+                'Dark Mode',
+                style: TextStyle(
+                    color:
+                        themeProvider.isDarkMode ? Colors.white : Colors.black),
+              ),
+              value: themeProvider.isDarkMode,
               onChanged: (bool value) {
-                setState(() {
-                  isDarkMode = value;
-                });
+                themeProvider.toggleTheme();
               },
             ),
           ],
@@ -461,12 +523,14 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildSecuritySettings() {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: themeProvider.isDarkMode ? Colors.grey[800] : Colors.white,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
@@ -479,15 +543,27 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           children: [
             ListTile(
-              title: const Text('Logout'),
+              title: Text(
+                'Logout',
+                style: TextStyle(
+                    color:
+                        themeProvider.isDarkMode ? Colors.white : Colors.black),
+              ),
               trailing: IconButton(
                 icon: const Icon(Icons.exit_to_app),
                 onPressed: () => _confirmLogout(context),
               ),
             ),
-            const Divider(),
+            Divider(
+                color:
+                    themeProvider.isDarkMode ? Colors.white70 : Colors.black),
             ListTile(
-              title: const Text('Delete Account'),
+              title: Text(
+                'Delete Account',
+                style: TextStyle(
+                    color:
+                        themeProvider.isDarkMode ? Colors.white : Colors.black),
+              ),
               trailing: IconButton(
                 icon: const Icon(Icons.delete, color: Colors.red),
                 onPressed: () => _confirmDeleteAccount(context),
@@ -500,11 +576,17 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildSectionTitle(String title) {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: themeProvider.isDarkMode ? Colors.white : Colors.black,
+        ),
       ),
     );
   }

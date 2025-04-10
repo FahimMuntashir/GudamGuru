@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'UserSession.dart';
 import 'homepage.dart';
 import 'inventory.dart';
 import 'profile.dart';
-import 'UserSession.dart';
+import 'providers/theme_provider.dart';
 
 class ReportAnalyticsPage extends StatefulWidget {
   const ReportAnalyticsPage({super.key});
@@ -27,6 +30,8 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return Scaffold(
       body: Stack(
         children: [
@@ -186,7 +191,10 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.black,
+        unselectedItemColor:
+            themeProvider.isDarkMode ? Colors.white70 : Colors.black,
+        backgroundColor:
+            themeProvider.isDarkMode ? Colors.grey[900] : Colors.white,
         currentIndex: _selectedIndex,
         onTap: (index) {
           if (index == 0) {

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import 'newproduct.dart';
-import 'newitem.dart';
-import 'sell.dart';
-import 'inventory.dart';
-import 'reportanalytics.dart';
-import 'profile.dart';
-import 'lowstock.dart';
-import 'notes.dart';
 import 'UserSession.dart';
 import 'database_helper.dart';
+import 'inventory.dart';
+import 'lowstock.dart';
+import 'newitem.dart';
+import 'newproduct.dart';
+import 'notes.dart';
+import 'profile.dart';
+import 'providers/theme_provider.dart';
+import 'reportanalytics.dart';
+import 'sell.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -55,6 +57,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return Scaffold(
       body: Stack(
         children: [
@@ -203,7 +207,10 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.black,
+        unselectedItemColor:
+            themeProvider.isDarkMode ? Colors.white70 : Colors.black,
+        backgroundColor:
+            themeProvider.isDarkMode ? Colors.grey[900] : Colors.white,
         currentIndex: _selectedIndex,
         onTap: (index) {
           if (index == 1) {
