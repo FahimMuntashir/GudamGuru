@@ -89,6 +89,17 @@ class DatabaseHelper {
     }
   }
 
+  //invoices.dart
+  Future<List<Map<String, dynamic>>> getAllSales() async {
+    final dbClient = await database;
+    final userId = UserSession().userId;
+
+    return await dbClient.query('sales',
+        where: 'user_id = ?',
+        whereArgs: [userId],
+        orderBy: 'date_sold DESC, time_sold DESC');
+  }
+
 //sell.dart begins
    Future<void> insertSale(Map<String, dynamic> saleData) async {
     final dbClient = await database;
