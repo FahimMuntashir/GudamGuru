@@ -90,22 +90,33 @@ class DatabaseHelper {
   }
 
 //sell.dart begins
-  Future<void> insertSale(Map<String, dynamic> saleData) async {
+   Future<void> insertSale(Map<String, dynamic> saleData) async {
     final dbClient = await database;
 
+    // Create table with invoice_number and time fields
     await dbClient.execute('''
     CREATE TABLE IF NOT EXISTS sales (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      invoice_number TEXT,
       product_id TEXT,
       quantity INTEGER,
       unit_price REAL,
       total_price REAL,
       date_sold TEXT,
+      time_sold TEXT,
       user_id TEXT
     )
   ''');
 
+    // Generate invoice number and time
+    String timeOnly =
+        DateTime.now().toLocal().toString().split(' ')[1].split('.')[0];
+    String invoiceNumber = 'INV${DateTime.now().millisecondsSinceEpoch}';
+
+    saleData['invoice_number'] = invoiceNumber;
+    saleData['time_sold'] = timeOnly;
     saleData['user_id'] = UserSession().userId;
+
     await dbClient.insert('sales', saleData);
   }
 
