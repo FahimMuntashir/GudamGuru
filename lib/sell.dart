@@ -438,18 +438,25 @@ class _SellPageState extends State<SellPage> {
                           _buildCartSection(),
                           const SizedBox(height: 10),
                           ElevatedButton.icon(
-                            onPressed: _exportAsPdf,
-                            icon: const Icon(Icons.picture_as_pdf),
-                            label: const Text('Export PDF'),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const InvoicesPage()),
+                              );
+                            },
+                            icon: const Icon(
+                                Icons.receipt_long), // Invoice-style icon
+                            label: const Text("Invoices"),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xff9b89ff),
-                              foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 30, vertical: 15),
+                                  horizontal: 40, vertical: 15),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
                             ),
-                          ),
+                          )
                         ],
                       ),
                     ],
