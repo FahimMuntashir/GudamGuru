@@ -18,9 +18,17 @@ class InvoicesPage extends StatefulWidget {
 }
 
 class _InvoicesPageState extends State<InvoicesPage> {
+  final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> invoices = [];
   List<Map<String, dynamic>> filteredInvoices = [];
   DateTime? selectedDate;
+
+  double _calculateTotalSales() {
+    return filteredInvoices.fold(
+      0.0,
+      (sum, inv) => sum + (inv['total_price'] ?? 0.0),
+    );
+  }
 
   @override
   void initState() {
@@ -59,15 +67,39 @@ class _InvoicesPageState extends State<InvoicesPage> {
     });
   }
 
+  // void _applyDateFilter() {
+  //   if (selectedDate == null) {
+  //     filteredInvoices = invoices;
+  //   } else {
+  //     final formatted = DateFormat('yyyy-MM-dd').format(selectedDate!);
+  //     filteredInvoices = invoices
+  //         .where((inv) => inv['date_sold'].startsWith(formatted))
+  //         .toList();
+  //   }
+  // }
   void _applyDateFilter() {
-    if (selectedDate == null) {
-      filteredInvoices = invoices;
-    } else {
+    List<Map<String, dynamic>> temp = invoices;
+
+    if (selectedDate != null) {
       final formatted = DateFormat('yyyy-MM-dd').format(selectedDate!);
-      filteredInvoices = invoices
-          .where((inv) => inv['date_sold'].startsWith(formatted))
-          .toList();
+      temp =
+          temp.where((inv) => inv['date_sold'].startsWith(formatted)).toList();
     }
+
+    String query = _searchController.text.toLowerCase();
+    if (query.isNotEmpty) {
+      temp = temp.where((invoice) {
+        return invoice['items'].any((item) {
+          final pid = item['product_id'].toString().toLowerCase();
+          final name = (item['name'] ?? '').toString().toLowerCase();
+          return pid.contains(query) || name.contains(query);
+        });
+      }).toList();
+    }
+
+    setState(() {
+      filteredInvoices = temp;
+    });
   }
 
   Future<void> _exportInvoiceAsPdf(Map<String, dynamic> invoice) async {
@@ -85,7 +117,10 @@ class _InvoicesPageState extends State<InvoicesPage> {
                 pw.Text(companyName,
                     style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold, fontSize: 16)),
-                pw.Text('${invoice['date_sold']} ${invoice['time_sold']}'),
+                pw.Text(
+                  '${DateFormat('dd-MM-yyyy').format(DateTime.parse(invoice['date_sold']))} '
+                  '${DateFormat('hh:mm a').format(DateFormat('HH:mm:ss').parse(invoice['time_sold']))}',
+                ),
               ],
             ),
             pw.SizedBox(height: 10),
@@ -94,10 +129,10 @@ class _InvoicesPageState extends State<InvoicesPage> {
             pw.Text('Details:'),
             ...invoice['items']
                 .map<pw.Widget>((item) => pw.Text(
-                    '${item['product_id']} - Qty: ${item['quantity']} x ৳${item['unit_price']} = ৳${item['total_price']}'))
+                    '${item['product_id']} - ${item['name']}   :::   Quantity: ${item['quantity']} x TK ${item['unit_price']} = TK ${item['total_price']}'))
                 .toList(),
             pw.Divider(),
-            pw.Text('Total: ৳${invoice['total_price'].toStringAsFixed(2)}'),
+            pw.Text('Total: TK ${invoice['total_price'].toStringAsFixed(2)}'),
             pw.Spacer(),
             pw.Align(
               alignment: pw.Alignment.center,
@@ -128,7 +163,10 @@ class _InvoicesPageState extends State<InvoicesPage> {
                   pw.Text(companyName,
                       style: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold, fontSize: 16)),
-                  pw.Text('${invoice['date_sold']} ${invoice['time_sold']}'),
+                  pw.Text(
+                    '${DateFormat('dd-MM-yyyy').format(DateTime.parse(invoice['date_sold']))} '
+                    '${DateFormat('hh:mm a').format(DateFormat('HH:mm:ss').parse(invoice['time_sold']))}',
+                  ),
                 ],
               ),
               pw.SizedBox(height: 10),
@@ -137,10 +175,10 @@ class _InvoicesPageState extends State<InvoicesPage> {
               pw.Text('Details:'),
               ...invoice['items']
                   .map<pw.Widget>((item) => pw.Text(
-                      '${item['product_id']} - Qty: ${item['quantity']} x ৳${item['unit_price']} = ৳${item['total_price']}'))
+                      '${item['product_id']} - ${item['name']}   :::   Quantity: ${item['quantity']} x TK ${item['unit_price']} = TK ${item['total_price']}'))
                   .toList(),
               pw.Divider(),
-              pw.Text('Total: ৳${invoice['total_price'].toStringAsFixed(2)}'),
+              pw.Text('Total: TK ${invoice['total_price'].toStringAsFixed(2)}'),
               pw.SizedBox(height: 20),
               pw.Align(
                 alignment: pw.Alignment.center,
@@ -166,14 +204,18 @@ class _InvoicesPageState extends State<InvoicesPage> {
           children: [
             Text('Invoice #: ${invoice['invoice_number']}',
                 style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text('Date: ${invoice['date_sold']}'),
-            Text('Time: ${invoice['time_sold']}'),
+            Text(
+              'Date: ${DateFormat('dd-MM-yyyy').format(DateTime.parse(invoice['date_sold']))}',
+            ),
+            Text(
+              'Time: ${DateFormat('hh:mm a').format(DateFormat('HH:mm:ss').parse(invoice['time_sold']))}',
+            ),
             const SizedBox(height: 8),
             ...invoice['items'].map<Widget>((item) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Text(
-                    '${item['product_id']} - Qty: ${item['quantity']} x ৳${item['unit_price']} = ৳${item['total_price']}'),
+                    '${item['product_id']} - ${item['name']}   :::   Quantity: ${item['quantity']} x ৳${item['unit_price']} = ৳${item['total_price']}'),
               );
             }).toList(),
             const Divider(),
@@ -186,7 +228,7 @@ class _InvoicesPageState extends State<InvoicesPage> {
                 icon: const Icon(Icons.picture_as_pdf),
                 label: const Text("Export PDF"),
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurpleAccent),
+                    backgroundColor: const Color.fromARGB(255, 198, 177, 255)),
               ),
             )
           ],
@@ -244,37 +286,61 @@ class _InvoicesPageState extends State<InvoicesPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        TextButton.icon(
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: DateTime.now(),
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime.now(),
-                            );
-                            if (picked != null) {
-                              setState(() {
-                                selectedDate = picked;
-                                _applyDateFilter();
-                              });
-                            }
-                          },
-                          icon: const Icon(Icons.calendar_today, size: 16),
-                          label: const Text("Filter by Date"),
-                        )
                       ],
                     )
                   ],
                 ),
               ),
               const SizedBox(height: 10),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.0),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Invoices',
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Stack(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: const Text(
+                        'Invoices',
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            setState(() {
+                              selectedDate = picked;
+                              _applyDateFilter();
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.calendar_today, size: 16),
+                        label: const Text("Filter by Date"),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: 'Search by product ID or name',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onChanged: (_) => _applyDateFilter(),
                 ),
               ),
               const SizedBox(height: 10),
@@ -288,17 +354,27 @@ class _InvoicesPageState extends State<InvoicesPage> {
                       ),
               ),
               Padding(
-                padding: const EdgeInsets.only(right: 20.0, bottom: 10),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: FloatingActionButton.extended(
-                    onPressed: _exportAllInvoices,
-                    icon: const Icon(Icons.picture_as_pdf),
-                    label: const Text("Export All PDFs"),
-                    backgroundColor: Colors.deepPurpleAccent,
-                  ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Total Sales: ৳${_calculateTotalSales().toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    FloatingActionButton.extended(
+                      onPressed: _exportAllInvoices,
+                      icon: const Icon(Icons.picture_as_pdf),
+                      label: const Text("Export All PDFs"),
+                      backgroundColor: const Color.fromARGB(255, 217, 205, 255),
+                    ),
+                  ],
                 ),
-              )
+              ),
             ],
           )
         ],
