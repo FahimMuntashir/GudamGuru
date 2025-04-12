@@ -104,12 +104,12 @@ class DatabaseHelper {
    Future<void> insertSale(Map<String, dynamic> saleData) async {
     final dbClient = await database;
 
-    // Create table with invoice_number and time fields
     await dbClient.execute('''
     CREATE TABLE IF NOT EXISTS sales (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       invoice_number TEXT,
       product_id TEXT,
+      name TEXT,
       quantity INTEGER,
       unit_price REAL,
       total_price REAL,
@@ -119,13 +119,11 @@ class DatabaseHelper {
     )
   ''');
 
-    // Generate invoice number and time
-    String timeOnly =
-        DateTime.now().toLocal().toString().split(' ')[1].split('.')[0];
-    String invoiceNumber = 'INV${DateTime.now().millisecondsSinceEpoch}';
+    if (saleData['name'] == null || saleData['name'].toString().isEmpty) {
+      final product = await getProductById(saleData['product_id'] ?? '');
+      saleData['name'] = product?['name'] ?? 'Unnamed';
+    }
 
-    saleData['invoice_number'] = invoiceNumber;
-    saleData['time_sold'] = timeOnly;
     saleData['user_id'] = UserSession().userId;
 
     await dbClient.insert('sales', saleData);
