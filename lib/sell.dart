@@ -165,6 +165,11 @@ class _SellPageState extends State<SellPage> {
   Future<void> _confirmSell() async {
     final db = DatabaseHelper();
 
+    // Generate one invoice number and timestamp for the whole cart
+    String invoiceNumber = 'INV${DateTime.now().millisecondsSinceEpoch}';
+    String timeOnly = DateFormat('HH:mm:ss').format(DateTime.now());
+    String dateOnly = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
     for (var item in cart) {
       String productId = item['product_id'];
       int qtyToDeduct = item['quantity'];
@@ -175,12 +180,10 @@ class _SellPageState extends State<SellPage> {
       List<Map<String, dynamic>> stockList =
           List<Map<String, dynamic>>.from(stockListRaw);
 
-      // ✅ Sort by date_added ASC and then by ID ASC (FIFO fallback)
       stockList.sort((a, b) {
         int dateCompare = DateTime.parse(a['date_added'])
             .compareTo(DateTime.parse(b['date_added']));
-        if (dateCompare != 0) return dateCompare;
-        return a['id'].compareTo(b['id']);
+        return dateCompare != 0 ? dateCompare : a['id'].compareTo(b['id']);
       });
 
       for (var stock in stockList) {
@@ -196,13 +199,16 @@ class _SellPageState extends State<SellPage> {
 
       await db.decreaseProductQuantity(productId, item['quantity']);
 
+      // Use shared invoice info
       await db.insertSale({
+        'invoice_number': invoiceNumber,
+        'date_sold': dateOnly,
+        'time_sold': timeOnly,
         'product_id': productId,
+        'name': item['name'],
         'quantity': item['quantity'],
         'unit_price': unitPrice,
         'total_price': item['quantity'] * unitPrice,
-        'date_sold': DateTime.now().toString(),
-        'user_id': UserSession().userId,
       });
     }
 
