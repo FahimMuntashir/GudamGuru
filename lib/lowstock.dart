@@ -1,9 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
+
+import 'UserSession.dart';
+import 'database_helper.dart';
 import 'homepage.dart';
 import 'inventory.dart';
-import 'reportanalytics.dart';
 import 'profile.dart';
-import 'UserSession.dart';
+import 'reportanalytics.dart';
 
 class LowStockPage extends StatefulWidget {
   const LowStockPage({super.key});
@@ -14,26 +22,161 @@ class LowStockPage extends StatefulWidget {
 
 class _LowStockPageState extends State<LowStockPage> {
   bool sortAscending = true;
-  List<Map<String, dynamic>> lowStockProducts = [
-    {'name': 'Product A', 'stock': 3, 'threshold': 5},
-    {'name': 'Product B', 'stock': 1, 'threshold': 3},
-    {'name': 'Product C', 'stock': 2, 'threshold': 4},
-  ];
+  List<Map<String, dynamic>> lowStockProducts = [];
+  List<Map<String, dynamic>> outOfStockProducts = [];
+  Map<String, dynamic> stockSummary = {};
+  final DatabaseHelper _dbHelper = DatabaseHelper();
+  bool isLoading = true;
 
-  List<Map<String, dynamic>> outOfStockProducts = [
-    {'name': 'Product X'},
-    {'name': 'Product Y'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => isLoading = true);
+    try {
+      final lowStock = await _dbHelper.getLowStockProducts();
+      final outOfStock = await _dbHelper.getOutOfStockProducts();
+      final summary = await _dbHelper.getStockSummary();
+
+      setState(() {
+        lowStockProducts = lowStock;
+        outOfStockProducts = outOfStock;
+        stockSummary = summary;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading data: $e');
+      setState(() => isLoading = false);
+    }
+  }
 
   void _sortStock() {
     setState(() {
       if (sortAscending) {
-        lowStockProducts.sort((a, b) => a['stock'].compareTo(b['stock']));
+        lowStockProducts.sort(
+            (a, b) => (a['total_stock'] ?? 0).compareTo(b['total_stock'] ?? 0));
       } else {
-        lowStockProducts.sort((a, b) => b['stock'].compareTo(a['stock']));
+        lowStockProducts.sort(
+            (a, b) => (b['total_stock'] ?? 0).compareTo(a['total_stock'] ?? 0));
       }
       sortAscending = !sortAscending;
     });
+  }
+
+  Future<void> _exportToPDF() async {
+    try {
+      final pdf = pw.Document();
+
+      // Add company header
+      pdf.addPage(
+        pw.Page(
+          build: (pw.Context context) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('${UserSession().companyName} - Stock Alert Report',
+                  style: pw.TextStyle(
+                      fontSize: 20, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 20),
+
+              // Low Stock Products
+              pw.Text('Low Stock Products',
+                  style: pw.TextStyle(
+                      fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 10),
+              pw.Table(
+                border: pw.TableBorder.all(),
+                children: [
+                  pw.TableRow(
+                    children: [
+                      pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text('Product Name')),
+                      pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text('Current Stock')),
+                      pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text('Alert Level')),
+                    ],
+                  ),
+                  ...lowStockProducts.map((product) => pw.TableRow(
+                        children: [
+                          pw.Padding(
+                              padding: const pw.EdgeInsets.all(8),
+                              child: pw.Text(product['name'])),
+                          pw.Padding(
+                              padding: const pw.EdgeInsets.all(8),
+                              child: pw.Text('${product['total_stock']}')),
+                          pw.Padding(
+                              padding: const pw.EdgeInsets.all(8),
+                              child: pw.Text('${product['low_stock_alert']}')),
+                        ],
+                      )),
+                ],
+              ),
+
+              pw.SizedBox(height: 20),
+
+              // Out of Stock Products
+              pw.Text('Out of Stock Products',
+                  style: pw.TextStyle(
+                      fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 10),
+              pw.Table(
+                border: pw.TableBorder.all(),
+                children: [
+                  pw.TableRow(
+                    children: [
+                      pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text('Product Name')),
+                    ],
+                  ),
+                  ...outOfStockProducts.map((product) => pw.TableRow(
+                        children: [
+                          pw.Padding(
+                              padding: const pw.EdgeInsets.all(8),
+                              child: pw.Text(product['name'])),
+                        ],
+                      )),
+                ],
+              ),
+
+              pw.SizedBox(height: 20),
+
+              // Stock Summary
+              pw.Text('Stock Summary',
+                  style: pw.TextStyle(
+                      fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 10),
+              pw.Text('Total Stock Value: ${stockSummary['total_value']} TK'),
+              pw.SizedBox(height: 10),
+              pw.Text(
+                  'Fastest Moving Products: ${stockSummary['fastest_moving'].join(', ')}'),
+              pw.SizedBox(height: 10),
+              pw.Text(
+                  'Slow Moving Products: ${stockSummary['slow_moving'].join(', ')}'),
+            ],
+          ),
+        ),
+      );
+
+      // Save the PDF
+      final output = await getTemporaryDirectory();
+      final file = File('${output.path}/stock_alert_report.pdf');
+      await file.writeAsBytes(await pdf.save());
+
+      // Share the PDF
+      await Share.shareXFiles([XFile(file.path)], text: 'Stock Alert Report');
+    } catch (e) {
+      print('Error generating PDF: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating PDF: $e')),
+      );
+    }
   }
 
   @override
@@ -81,10 +224,7 @@ class _LowStockPageState extends State<LowStockPage> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Image.asset(
-                              'assets/images/logo.png',
-                              width: 150,
-                            ),
+                            Image.asset('assets/images/logo.png', width: 150),
                             Text(
                               (UserSession().companyName!),
                               style: const TextStyle(
@@ -97,44 +237,48 @@ class _LowStockPageState extends State<LowStockPage> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Sorting Button
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Sort by Stock Level:'),
-                            IconButton(
-                              icon: Icon(sortAscending
-                                  ? Icons.arrow_upward
-                                  : Icons.arrow_downward),
-                              onPressed: _sortStock,
-                            ),
-                          ],
+                      if (isLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else ...[
+                        // Sorting Button
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Sort by Stock Level:'),
+                              IconButton(
+                                icon: Icon(sortAscending
+                                    ? Icons.arrow_upward
+                                    : Icons.arrow_downward),
+                                onPressed: _sortStock,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
 
-                      // Low Stock Alerts
-                      _buildSectionTitle('Low Stock Alerts'),
-                      _buildLowStockList(),
+                        // Low Stock Alerts
+                        _buildSectionTitle('Low Stock Alerts'),
+                        _buildLowStockList(),
 
-                      // Out of Stock Alerts
-                      _buildSectionTitle('Out of Stock Alerts'),
-                      _buildOutOfStockList(),
+                        // Out of Stock Alerts
+                        _buildSectionTitle('Out of Stock Alerts'),
+                        _buildOutOfStockList(),
 
-                      // Stock Report
-                      _buildSectionTitle('Stock Report'),
-                      _buildStockReport(),
+                        // Stock Report
+                        _buildSectionTitle('Stock Report'),
+                        _buildStockReport(),
 
-                      // Export Button
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        child: ElevatedButton(
-                          onPressed: () {}, // Implement export logic
-                          child: const Text(
-                              'Export Stock Alert Report (📤 PDF/Excel)'),
+                        // Export Button
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          child: ElevatedButton(
+                            onPressed: _exportToPDF,
+                            child: const Text(
+                                'Export Stock Alert Report (📤 PDF)'),
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -189,23 +333,37 @@ class _LowStockPageState extends State<LowStockPage> {
   }
 
   Widget _buildLowStockList() {
+    if (lowStockProducts.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: Text('No low stock products found'),
+      );
+    }
+
     return Column(
       children: lowStockProducts.map((product) {
         return ListTile(
-          title: Text('${product['name']} - ${product['stock']} left'),
-          subtitle: Text('Reorder at ${product['threshold']}'),
-          trailing: Icon(Icons.warning, color: Colors.orange),
+          title: Text('${product['name']} - ${product['total_stock']} left'),
+          subtitle: Text('Reorder at ${product['low_stock_alert']}'),
+          trailing: const Icon(Icons.warning, color: Colors.orange),
         );
       }).toList(),
     );
   }
 
   Widget _buildOutOfStockList() {
+    if (outOfStockProducts.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: Text('No out of stock products found'),
+      );
+    }
+
     return Column(
       children: outOfStockProducts.map((product) {
         return ListTile(
           title: Text('${product['name']} - Out of Stock'),
-          trailing: Icon(Icons.error, color: Colors.red),
+          trailing: const Icon(Icons.error, color: Colors.red),
         );
       }).toList(),
     );
@@ -228,12 +386,19 @@ class _LowStockPageState extends State<LowStockPage> {
           ],
         ),
         child: Column(
-          children: const [
-            ListTile(title: Text('Current Stock Value: 500,000 TK')),
+          children: [
             ListTile(
-                title: Text('Fastest Moving Products: Product A, Product C')),
+              title: Text(
+                  'Current Stock Value: ${stockSummary['total_value']?.toStringAsFixed(2) ?? '0.00'} TK'),
+            ),
             ListTile(
-                title: Text('Slow-Moving or Dead Stock: Product X, Product Y')),
+              title: Text(
+                  'Fastest Moving Products: ${stockSummary['fastest_moving']?.join(', ') ?? 'None'}'),
+            ),
+            ListTile(
+              title: Text(
+                  'Slow-Moving or Dead Stock: ${stockSummary['slow_moving']?.join(', ') ?? 'None'}'),
+            ),
           ],
         ),
       ),

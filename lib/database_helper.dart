@@ -326,4 +326,78 @@ class DatabaseHelper {
       whereArgs: [id, UserSession().userId],
     );
   }
+
+  Future<List<Map<String, dynamic>>> getLowStockProducts() async {
+    final dbClient = await database;
+    final userId = UserSession().userId;
+    return await dbClient.rawQuery('''
+      SELECT p.*, 
+             (SELECT SUM(quantity) FROM stock_entries 
+              WHERE product_id = p.product_id AND user_id = ?) as total_stock
+      FROM products p
+      WHERE p.user_id = ? 
+        AND p.low_stock_alert IS NOT NULL 
+        AND (SELECT SUM(quantity) FROM stock_entries 
+             WHERE product_id = p.product_id AND user_id = ?) <= p.low_stock_alert
+      ORDER BY total_stock ASC
+    ''', [userId, userId, userId]);
+  }
+
+  Future<List<Map<String, dynamic>>> getOutOfStockProducts() async {
+    final dbClient = await database;
+    final userId = UserSession().userId;
+    return await dbClient.rawQuery('''
+      SELECT p.*, 
+             (SELECT SUM(quantity) FROM stock_entries 
+              WHERE product_id = p.product_id AND user_id = ?) as total_stock
+      FROM products p
+      WHERE p.user_id = ? 
+        AND (SELECT SUM(quantity) FROM stock_entries 
+             WHERE product_id = p.product_id AND user_id = ?) = 0
+      ORDER BY p.name ASC
+    ''', [userId, userId, userId]);
+  }
+
+  Future<Map<String, dynamic>> getStockSummary() async {
+    final dbClient = await database;
+    final userId = UserSession().userId;
+
+    // Get total stock value
+    final totalValue = await dbClient.rawQuery('''
+      SELECT SUM(se.quantity * p.purchase_price) as total_value
+      FROM stock_entries se
+      JOIN products p ON se.product_id = p.product_id
+      WHERE se.user_id = ?
+    ''', [userId]);
+
+    // Get fastest moving products (top 5 by sales in last 30 days)
+    final fastestMoving = await dbClient.rawQuery('''
+      SELECT p.name, SUM(s.quantity) as total_sold
+      FROM sales s
+      JOIN products p ON s.product_id = p.product_id
+      WHERE s.user_id = ? 
+        AND s.date_sold >= date('now', '-30 days')
+      GROUP BY p.product_id
+      ORDER BY total_sold DESC
+      LIMIT 5
+    ''', [userId]);
+
+    // Get slow moving products (no sales in last 90 days)
+    final slowMoving = await dbClient.rawQuery('''
+      SELECT p.name
+      FROM products p
+      LEFT JOIN sales s ON p.product_id = s.product_id 
+        AND s.user_id = ? 
+        AND s.date_sold >= date('now', '-90 days')
+      WHERE p.user_id = ? 
+        AND s.id IS NULL
+      ORDER BY p.name ASC
+    ''', [userId, userId]);
+
+    return {
+      'total_value': totalValue.first['total_value'] ?? 0,
+      'fastest_moving': fastestMoving.map((p) => p['name'] as String).toList(),
+      'slow_moving': slowMoving.map((p) => p['name'] as String).toList(),
+    };
+  }
 }
