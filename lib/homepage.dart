@@ -11,6 +11,7 @@ import 'notes.dart';
 import 'profile.dart';
 import 'providers/theme_provider.dart';
 import 'reportanalytics.dart';
+import 'package:intl/intl.dart';
 import 'sell.dart';
 
 class HomePage extends StatefulWidget {
@@ -24,11 +25,29 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
   double _totalStockValue = 0.0;
+  double _todaySalesTotal = 0.0;
 
   @override
   void initState() {
     super.initState();
     _calculateTotalStockValue();
+    _calculateTodaySalesTotal();
+  }
+
+  Future<void> _calculateTodaySalesTotal() async {
+    final db = DatabaseHelper();
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+    final allSales = await db.getAllSales(); // already filtered by user_id
+    final todaySales = allSales.where(
+        (sale) => (sale['date_sold'] ?? '').toString().startsWith(today));
+
+    final total =
+        todaySales.fold(0.0, (sum, sale) => sum + (sale['total_price'] ?? 0.0));
+
+    setState(() {
+      _todaySalesTotal = total;
+    });
   }
 
   Future<void> _calculateTotalStockValue() async {
@@ -156,6 +175,8 @@ class _HomePageState extends State<HomePage> {
                               'Buy & Sell Reports', context),
                           _buildQuickButton('assets/images/alert.png',
                               'Low Stock Alerts', context),
+                          _buildQuickButton('assets/images/alert.png',
+                              'Return Items', context),
                           _buildQuickButton(
                               'assets/images/notes.png', 'Notes', context),
                         ],
@@ -185,8 +206,10 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _buildOverviewTile('assets/images/taka.png',
-                          'Total Sales Today', '৳ 0.00'),
+                      _buildOverviewTile(
+                          'assets/images/taka.png',
+                          'Total Sales Today',
+                          '৳ ${_todaySalesTotal.toStringAsFixed(2)}'),
                       _buildOverviewTile('assets/images/purchase.png',
                           'Total Purchase Today', '৳ 0.00'),
                       _buildOverviewTile(
@@ -315,10 +338,12 @@ Widget _buildQuickButton(String iconPath, String label, BuildContext context) {
       } else if (label == 'Low Stock Alerts') {
         Navigator.push(context,
             MaterialPageRoute(builder: (context) => const LowStockPage()));
+        
       } else if (label == 'Notes') {
         Navigator.push(context,
             MaterialPageRoute(builder: (context) => const NotesPage()));
       }
+      
     },
     child: Container(
       margin: const EdgeInsets.all(8),

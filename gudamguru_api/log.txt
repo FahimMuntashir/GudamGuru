@@ -1,8 +1,0 @@
-Array
-(
-    [company] => f12r
-    [user_id] => fahim
-    [phone] => 333
-    [password] => admin
-    [repassword] => admin
-)

@@ -190,7 +190,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 if (enteredOtp == '111111') {
                   // Proceed to delete account
                   var url = Uri.parse(
-                      'http://192.168.0.10/gudamguru_api/delete_account.php');
+                      'http://192.168.0.179/gudamguru_api/delete_account.php');
                   var response = await http.post(url, body: {
                     'user_id': UserSession().userId,
                   });
@@ -557,18 +557,18 @@ class _ProfilePageState extends State<ProfilePage> {
             Divider(
                 color:
                     themeProvider.isDarkMode ? Colors.white70 : Colors.black),
-            ListTile(
-              title: Text(
-                'Delete Account',
-                style: TextStyle(
-                    color:
-                        themeProvider.isDarkMode ? Colors.white : Colors.black),
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _confirmDeleteAccount(context),
-              ),
-            ),
+            // ListTile(
+            //   title: Text(
+            //     'Delete Account',
+            //     style: TextStyle(
+            //         color:
+            //             themeProvider.isDarkMode ? Colors.white : Colors.black),
+            //   ),
+            //   trailing: IconButton(
+            //     icon: const Icon(Icons.delete, color: Colors.red),
+            //     onPressed: () => _confirmDeleteAccount(context),
+            //   ),
+            // ),
           ],
         ),
       ),

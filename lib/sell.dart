@@ -1,6 +1,4 @@
-
 import 'package:flutter/material.dart';
-import 'package:gudam_guru/invoices.dart';
 import 'database_helper.dart';
 import 'homepage.dart';
 import 'inventory.dart';
@@ -11,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
+import 'invoices.dart';
 
 class SellPage extends StatefulWidget {
   const SellPage({super.key});
@@ -164,10 +163,61 @@ class _SellPageState extends State<SellPage> {
     });
   }
 
+  // Future<void> _confirmSell() async {
+  //   final db = DatabaseHelper();
+
+  //   for (var item in cart) {
+  //     String productId = item['product_id'];
+  //     int qtyToDeduct = item['quantity'];
+  //     double unitPrice = item['price'];
+
+  //     List<Map<String, dynamic>> stockListRaw =
+  //         await db.getStockEntriesForProduct(productId);
+  //     List<Map<String, dynamic>> stockList =
+  //         List<Map<String, dynamic>>.from(stockListRaw);
+
+  //     // ✅ Sort by date_added ASC and then by ID ASC (FIFO fallback)
+  //     stockList.sort((a, b) {
+  //       int dateCompare = DateTime.parse(a['date_added'])
+  //           .compareTo(DateTime.parse(b['date_added']));
+  //       if (dateCompare != 0) return dateCompare;
+  //       return a['id'].compareTo(b['id']);
+  //     });
+
+  //     for (var stock in stockList) {
+  //       if (qtyToDeduct == 0) break;
+  //       int availableQty = stock['quantity'];
+  //       int consumeQty =
+  //           qtyToDeduct >= availableQty ? availableQty : qtyToDeduct;
+
+  //       await db.updateStockEntryQuantity(
+  //           stock['id'], availableQty - consumeQty);
+  //       qtyToDeduct -= consumeQty;
+  //     }
+
+  //     await db.decreaseProductQuantity(productId, item['quantity']);
+
+  //     await db.insertSale({
+  //       'product_id': productId,
+  //       'quantity': item['quantity'],
+  //       'unit_price': unitPrice,
+  //       'total_price': item['quantity'] * unitPrice,
+  //       'date_sold': DateTime.now().toString(),
+  //       'user_id': UserSession().userId,
+  //     });
+  //   }
+
+  //   setState(() => cart.clear());
+
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     const SnackBar(content: Text("Sale completed and inventory updated!")),
+  //   );
+  // }
+
   Future<void> _confirmSell() async {
     final db = DatabaseHelper();
 
-    // Generate one invoice number and timestamp for the whole cart
+    // Generate invoice number and timestamps
     String invoiceNumber = 'INV${DateTime.now().millisecondsSinceEpoch}';
     String timeOnly = DateFormat('HH:mm:ss').format(DateTime.now());
     String dateOnly = DateFormat('yyyy-MM-dd').format(DateTime.now());
@@ -182,17 +232,26 @@ class _SellPageState extends State<SellPage> {
       List<Map<String, dynamic>> stockList =
           List<Map<String, dynamic>>.from(stockListRaw);
 
+      // Sort FIFO (oldest stock first)
       stockList.sort((a, b) {
         int dateCompare = DateTime.parse(a['date_added'])
             .compareTo(DateTime.parse(b['date_added']));
         return dateCompare != 0 ? dateCompare : a['id'].compareTo(b['id']);
       });
 
+      double totalCost = 0.0;
+      int totalQty = qtyToDeduct;
+
+      // Deduct stock using FIFO and compute total cost
       for (var stock in stockList) {
         if (qtyToDeduct == 0) break;
+
         int availableQty = stock['quantity'];
+        double price = stock['purchase_price'];
         int consumeQty =
             qtyToDeduct >= availableQty ? availableQty : qtyToDeduct;
+
+        totalCost += consumeQty * price;
 
         await db.updateStockEntryQuantity(
             stock['id'], availableQty - consumeQty);
@@ -201,7 +260,9 @@ class _SellPageState extends State<SellPage> {
 
       await db.decreaseProductQuantity(productId, item['quantity']);
 
-      // Use shared invoice info
+      // ✅ Compute weighted average purchase price
+      double purchasePrice = totalQty > 0 ? totalCost / totalQty : 0.0;
+
       await db.insertSale({
         'invoice_number': invoiceNumber,
         'date_sold': dateOnly,
@@ -210,6 +271,7 @@ class _SellPageState extends State<SellPage> {
         'name': item['name'],
         'quantity': item['quantity'],
         'unit_price': unitPrice,
+        'purchase_price': purchasePrice, // ✅ FIFO-based accurate price
         'total_price': item['quantity'] * unitPrice,
       });
     }
