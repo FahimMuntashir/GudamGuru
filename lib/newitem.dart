@@ -643,6 +643,10 @@ import 'profile.dart';
 import 'UserSession.dart';
 import 'database_helper.dart';
 
+const Color deepIndigo = Color(0xFF211C84);
+const Color vibrantBlue = Color(0xFF4D55CC);
+const Color brightBlue = Color(0xFF0037FF);
+
 class NewItemPage extends StatefulWidget {
   const NewItemPage({super.key});
 
@@ -737,6 +741,7 @@ class _NewItemPageState extends State<NewItemPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color.fromARGB(240, 255, 255, 255),
       body: Stack(
         children: [
           Positioned.fill(
@@ -744,6 +749,7 @@ class _NewItemPageState extends State<NewItemPage> {
               decoration: const BoxDecoration(
                 image: DecorationImage(
                   image: AssetImage('assets/images/background.png'),
+                  opacity: 0.1,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -751,54 +757,55 @@ class _NewItemPageState extends State<NewItemPage> {
           ),
           Column(
             children: [
-              Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(5),
-                    bottomRight: Radius.circular(5),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 5,
-                      spreadRadius: 2,
+              SafeArea(
+                child: Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(5),
+                      bottomRight: Radius.circular(5),
                     ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Image.asset('assets/images/logo.png', width: 150),
-                    Text(
-                      (UserSession().companyName ?? ''),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 5,
+                        spreadRadius: 2,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Image.asset('assets/images/logo.png', width: 150),
+                      Text(
+                        (UserSession().companyName!),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: deepIndigo,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 60),
                       Container(
                         padding: const EdgeInsets.all(15),
                         margin: const EdgeInsets.symmetric(horizontal: 20),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFDDE0FF).withOpacity(0.75),
-                          borderRadius: BorderRadius.circular(5),
+                          color: vibrantBlue.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Column(
                           children: [
-                            _buildQuickActions(),
-                            const SizedBox(height: 10),
                             _buildSearchBar(),
                             if (searchSuggestions.isNotEmpty)
                               ListView.builder(
@@ -829,7 +836,9 @@ class _NewItemPageState extends State<NewItemPage> {
                             ElevatedButton(
                               onPressed: _addItem,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xff9b89ff),
+                                backgroundColor: brightBlue,
+                                side: const BorderSide(
+                                    color: deepIndigo, width: 1.5),
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 40, vertical: 15),
                                 shape: RoundedRectangleBorder(
@@ -839,8 +848,10 @@ class _NewItemPageState extends State<NewItemPage> {
                               child: const Text(
                                 "Add Item",
                                 style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold),
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                           ],
@@ -857,8 +868,9 @@ class _NewItemPageState extends State<NewItemPage> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xff000000),
-        unselectedItemColor: Colors.black,
+        selectedItemColor: deepIndigo,
+        unselectedItemColor: deepIndigo,
+        backgroundColor: Colors.white,
         onTap: (index) {
           if (index == 0) {
             Navigator.pushReplacement(context,
@@ -891,23 +903,6 @@ class _NewItemPageState extends State<NewItemPage> {
     );
   }
 
-  Widget _buildQuickActions() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: _buildQuickActionButton(
-              'assets/images/cam.png', 'Take a Picture'),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _buildQuickActionButton(
-              'assets/images/barcode.png', 'Scan Barcode'),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSearchBar() {
     return TextField(
       controller: _searchController,
@@ -917,55 +912,67 @@ class _NewItemPageState extends State<NewItemPage> {
         prefixIcon: const Icon(Icons.search),
         filled: true,
         fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: deepIndigo, width: 1.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: deepIndigo, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(
+              color: Color.fromARGB(255, 13, 0, 255), width: 2),
+        ),
       ),
     );
   }
 
   Widget _buildProductDetails(Map<String, dynamic> product) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Selected: ${product['name']} (ID: ${product['product_id']})',
-              style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 5),
-          Text('Brand: ${product['brand_name'] ?? ''}'),
-          Text('Unit: ${product['unit'] ?? ''}'),
-          const Divider(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionButton(String iconPath, String label) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 5,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.asset(iconPath, width: 40, height: 40),
-          const SizedBox(height: 5),
-          Text(label,
-              style:
-                  const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        child: Stack(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color:
+                    const Color.fromARGB(255, 255, 255, 255).withOpacity(0.8),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: deepIndigo, width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Name: ${product['name']}   (ID: ${product['product_id']})',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 5),
+                  Text('Brand: ${product['brand_name'] ?? ''}'),
+                  Text('Unit: ${product['unit'] ?? ''}'),
+                ],
+              ),
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: IconButton(
+                icon: const Icon(Icons.cancel, color: deepIndigo),
+                tooltip: 'Unselect',
+                onPressed: () {
+                  setState(() {
+                    selectedProduct = null;
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -985,10 +992,21 @@ class _NewItemPageState extends State<NewItemPage> {
           fillColor: Colors.white,
           hintText: hint,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: deepIndigo, width: 1.5),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: deepIndigo, width: 1.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(
+                color: Color.fromARGB(255, 13, 0, 255), width: 2),
           ),
         ),
       ),
     );
   }
 }
+
