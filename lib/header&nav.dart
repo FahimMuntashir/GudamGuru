@@ -4,11 +4,11 @@ import 'inventory.dart';
 import 'profile.dart';
 import 'UserSession.dart';
 import 'reportanalytics.dart';
+import 'providers/theme_provider.dart';
 
 const Color deepIndigo = Color(0xFF211C84);
 const Color brightBlue = Color(0xFF0037FF);
 
-// Header Widget
 Widget buildHeader() {
   return SafeArea(
     child: Container(
