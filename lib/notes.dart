@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-
-import 'UserSession.dart';
+import 'header&nav.dart';
+// import 'UserSession.dart';
 import 'database_helper.dart';
-import 'homepage.dart';
-import 'inventory.dart';
-import 'profile.dart';
-import 'reportanalytics.dart';
 
 class NotesPage extends StatefulWidget {
   const NotesPage({super.key});
@@ -95,7 +91,7 @@ class _NotesPageState extends State<NotesPage> {
             child: Container(
               width: double.infinity,
               height: double.infinity,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 image: DecorationImage(
                   image: AssetImage('assets/images/background.png'),
                   fit: BoxFit.cover,
@@ -109,38 +105,7 @@ class _NotesPageState extends State<NotesPage> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 15),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: const BorderRadius.only(
-                            bottomLeft: Radius.circular(5),
-                            bottomRight: Radius.circular(5),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 5,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Image.asset('assets/images/logo.png', width: 150),
-                            Text(
-                              (UserSession().companyName!),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      buildHeader(context),
                       const SizedBox(height: 20),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -213,12 +178,12 @@ class _NotesPageState extends State<NotesPage> {
                                             _toggleCompleteNote(index),
                                       ),
                                       IconButton(
-                                        icon: Icon(Icons.edit,
+                                        icon: const Icon(Icons.edit,
                                             color: Colors.blue),
                                         onPressed: () => _editNote(index),
                                       ),
                                       IconButton(
-                                        icon: Icon(Icons.delete,
+                                        icon: const Icon(Icons.delete,
                                             color: Colors.red),
                                         onPressed: () => _deleteNote(index),
                                       ),
@@ -240,46 +205,7 @@ class _NotesPageState extends State<NotesPage> {
       ),
 
       // Bottom Navigation Bar
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Color(0xff000000),
-        unselectedItemColor: Colors.black,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const HomePage()),
-            );
-          }
-          if (index == 1) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const InventoryPage()),
-            );
-          }
-          if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const ReportAnalyticsPage()),
-            );
-          }
-          if (index == 3) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const ProfilePage()),
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.inventory), label: 'Inventory'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart), label: 'Report & Analytics'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
-      ),
+      bottomNavigationBar: BottomNav(context, null),
     );
   }
 }

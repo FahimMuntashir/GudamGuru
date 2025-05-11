@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'database_helper.dart';
-import 'homepage.dart';
-import 'inventory.dart';
-import 'reportanalytics.dart';
-import 'profile.dart';
-import 'UserSession.dart';
+import 'header&nav.dart';
+// import 'UserSession.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
@@ -163,57 +160,6 @@ class _SellPageState extends State<SellPage> {
     });
   }
 
-  // Future<void> _confirmSell() async {
-  //   final db = DatabaseHelper();
-
-  //   for (var item in cart) {
-  //     String productId = item['product_id'];
-  //     int qtyToDeduct = item['quantity'];
-  //     double unitPrice = item['price'];
-
-  //     List<Map<String, dynamic>> stockListRaw =
-  //         await db.getStockEntriesForProduct(productId);
-  //     List<Map<String, dynamic>> stockList =
-  //         List<Map<String, dynamic>>.from(stockListRaw);
-
-  //     // ✅ Sort by date_added ASC and then by ID ASC (FIFO fallback)
-  //     stockList.sort((a, b) {
-  //       int dateCompare = DateTime.parse(a['date_added'])
-  //           .compareTo(DateTime.parse(b['date_added']));
-  //       if (dateCompare != 0) return dateCompare;
-  //       return a['id'].compareTo(b['id']);
-  //     });
-
-  //     for (var stock in stockList) {
-  //       if (qtyToDeduct == 0) break;
-  //       int availableQty = stock['quantity'];
-  //       int consumeQty =
-  //           qtyToDeduct >= availableQty ? availableQty : qtyToDeduct;
-
-  //       await db.updateStockEntryQuantity(
-  //           stock['id'], availableQty - consumeQty);
-  //       qtyToDeduct -= consumeQty;
-  //     }
-
-  //     await db.decreaseProductQuantity(productId, item['quantity']);
-
-  //     await db.insertSale({
-  //       'product_id': productId,
-  //       'quantity': item['quantity'],
-  //       'unit_price': unitPrice,
-  //       'total_price': item['quantity'] * unitPrice,
-  //       'date_sold': DateTime.now().toString(),
-  //       'user_id': UserSession().userId,
-  //     });
-  //   }
-
-  //   setState(() => cart.clear());
-
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     const SnackBar(content: Text("Sale completed and inventory updated!")),
-  //   );
-  // }
-
   Future<void> _confirmSell() async {
     final db = DatabaseHelper();
 
@@ -271,7 +217,7 @@ class _SellPageState extends State<SellPage> {
         'name': item['name'],
         'quantity': item['quantity'],
         'unit_price': unitPrice,
-        'purchase_price': purchasePrice, // ✅ FIFO-based accurate price
+        'purchase_price': purchasePrice,
         'total_price': item['quantity'] * unitPrice,
       });
     }
@@ -396,36 +342,7 @@ class _SellPageState extends State<SellPage> {
           ),
           Column(
             children: [
-              Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(5),
-                    bottomRight: Radius.circular(5),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 5,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Image.asset('assets/images/logo.png', width: 150),
-                    Text(
-                      UserSession().companyName ?? '',
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
+              buildHeader(context),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
@@ -537,39 +454,7 @@ class _SellPageState extends State<SellPage> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.black,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (context) => const HomePage()));
-          }
-          if (index == 1) {
-            Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (context) => const InventoryPage()));
-          }
-          if (index == 2) {
-            Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const ReportAnalyticsPage()));
-          }
-          if (index == 3) {
-            Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()));
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.inventory), label: 'Inventory'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart), label: 'Report & Analytics'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
-      ),
+      bottomNavigationBar: BottomNav(context, null),
     );
   }
 }

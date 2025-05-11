@@ -73,6 +73,18 @@ class DatabaseHelper {
         user_id TEXT NOT NULL
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE returns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        reason TEXT NOT NULL,
+        date_returned TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        FOREIGN KEY(product_id) REFERENCES products(product_id)
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -84,6 +96,19 @@ class DatabaseHelper {
           timestamp TEXT NOT NULL,
           completed INTEGER NOT NULL DEFAULT 0,
           user_id TEXT NOT NULL
+        )
+      ''');
+    }
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS returns (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          product_id TEXT NOT NULL,
+          quantity INTEGER NOT NULL,
+          reason TEXT NOT NULL,
+          date_returned TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          FOREIGN KEY(product_id) REFERENCES products(product_id)
         )
       ''');
     }
@@ -399,5 +424,33 @@ class DatabaseHelper {
       'fastest_moving': fastestMoving.map((p) => p['name'] as String).toList(),
       'slow_moving': slowMoving.map((p) => p['name'] as String).toList(),
     };
+  }
+
+  // Returns related methods
+  Future<int> insertReturn(Map<String, dynamic> returnData) async {
+    final dbClient = await database;
+    returnData['user_id'] = UserSession().userId;
+    return await dbClient.insert('returns', returnData);
+  }
+
+  Future<void> increaseProductQuantity(String productId, int quantity) async {
+    final dbClient = await database;
+    await dbClient.rawUpdate('''
+      UPDATE products
+      SET quantity = quantity + ?
+      WHERE product_id = ? AND user_id = ?
+    ''', [quantity, productId, UserSession().userId]);
+  }
+
+  Future<List<Map<String, dynamic>>> getAllReturns() async {
+    final dbClient = await database;
+    final userId = UserSession().userId;
+    return await dbClient.rawQuery('''
+      SELECT r.*, p.name as product_name
+      FROM returns r
+      JOIN products p ON r.product_id = p.product_id
+      WHERE r.user_id = ?
+      ORDER BY r.date_returned DESC
+    ''', [userId]);
   }
 }

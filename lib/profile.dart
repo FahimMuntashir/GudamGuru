@@ -5,11 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import 'UserSession.dart';
-import 'homepage.dart';
-import 'inventory.dart';
+import 'header&nav.dart';
 import 'login.dart';
 import 'providers/theme_provider.dart';
-import 'reportanalytics.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -19,7 +17,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  int _selectedIndex = 3;
   String selectedLanguage = 'English';
   final List<String> languages = ['English', 'Bangla'];
 
@@ -190,7 +187,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 if (enteredOtp == '111111') {
                   // Proceed to delete account
                   var url = Uri.parse(
-                      'http://192.168.0.179/gudamguru_api/delete_account.php');
+                      'http://192.168.0.10/gudamguru_api/delete_account.php');
                   var response = await http.post(url, body: {
                     'user_id': UserSession().userId,
                   });
@@ -257,130 +254,51 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = context.watch<ThemeProvider>();
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/background.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
-          Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      // Header
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 15),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: const BorderRadius.only(
-                            bottomLeft: Radius.circular(5),
-                            bottomRight: Radius.circular(5),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 5,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Image.asset(
-                              'assets/images/logo.png',
-                              width: 150,
-                            ),
-                            Text(
-                              (UserSession().companyName!),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // User Information
-                      _buildSectionTitle('User Information'),
-                      _buildUserInfo(),
-
-                      // Account & Settings
-                      _buildSectionTitle('Account & Settings'),
-                      _buildAccountSettings(),
-
-                      // Permissions & Security
-                      _buildSectionTitle('Permissions & Security'),
-                      _buildSecuritySettings(),
-                    ],
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: const BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/background.png'),
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+            Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        buildHeader(context),
+                        const SizedBox(height: 20),
 
-      // Bottom Navigation Bar
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green,
-        unselectedItemColor:
-            themeProvider.isDarkMode ? Colors.white70 : Colors.black,
-        backgroundColor:
-            themeProvider.isDarkMode ? Colors.grey[900] : Colors.white,
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const HomePage()),
-            );
-          }
-          if (index == 1) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const InventoryPage()),
-            );
-          }
-          if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const ReportAnalyticsPage()),
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.inventory), label: 'Inventory'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart), label: 'Report & Analytics'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
-      ),
-    );
+                        // User Information
+                        _buildSectionTitle('User Information'),
+                        _buildUserInfo(),
+
+                        // Account & Settings
+                        _buildSectionTitle('Account & Settings'),
+                        _buildAccountSettings(),
+
+                        // Permissions & Security
+                        _buildSectionTitle('Permissions & Security'),
+                        _buildSecuritySettings(),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        bottomNavigationBar: BottomNav(context, 3));
   }
 
   Widget _buildUserInfo() {
@@ -554,21 +472,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 onPressed: () => _confirmLogout(context),
               ),
             ),
-            Divider(
-                color:
-                    themeProvider.isDarkMode ? Colors.white70 : Colors.black),
-            // ListTile(
-            //   title: Text(
-            //     'Delete Account',
-            //     style: TextStyle(
-            //         color:
-            //             themeProvider.isDarkMode ? Colors.white : Colors.black),
-            //   ),
-            //   trailing: IconButton(
-            //     icon: const Icon(Icons.delete, color: Colors.red),
-            //     onPressed: () => _confirmDeleteAccount(context),
-            //   ),
-            // ),
+            // Divider(
+            //     color:
+            //         themeProvider.isDarkMode ? Colors.white70 : Colors.black),
           ],
         ),
       ),

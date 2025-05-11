@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+// import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 // import 'package:fl_chart/fl_chart.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -7,10 +7,12 @@ import 'package:printing/printing.dart';
 
 import 'UserSession.dart';
 import 'database_helper.dart';
-import 'homepage.dart';
-import 'inventory.dart';
-import 'profile.dart';
-import 'providers/theme_provider.dart';
+import 'header&nav.dart';
+// import 'providers/theme_provider.dart';
+
+const Color deepIndigo = Color(0xFF211C84);
+const Color vibrantBlue = Color(0xFF4D55CC);
+const Color brightBlue = Color(0xFF0037FF);
 
 class ReportAnalyticsPage extends StatefulWidget {
   const ReportAnalyticsPage({super.key});
@@ -20,7 +22,6 @@ class ReportAnalyticsPage extends StatefulWidget {
 }
 
 class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
-  int _selectedIndex = 2;
   String selectedReportType = 'Daily';
   String selectedViewType = 'Product-wise';
   String? selectedProduct;
@@ -46,6 +47,12 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
     'bestSeller': '',
     'leastSeller': '',
     'priceInsights': <String, dynamic>{},
+    'returns': {
+      'totalReturns': 0,
+      'totalReturnValue': 0.0,
+      'byProduct': <String, dynamic>{},
+      'mostReturned': '',
+    },
   };
 
   @override
@@ -60,6 +67,7 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
     List<Map<String, dynamic>> sales = await db.getAllSales();
     List<Map<String, dynamic>> stocks = [];
     List<Map<String, dynamic>> products = await db.getAllProducts();
+    List<Map<String, dynamic>> returns = await db.getAllReturns();
 
     for (var p in products) {
       stocks += await db.getStockEntriesForProduct(p['product_id']);
@@ -81,7 +89,11 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: deepIndigo,
+        ),
       ),
     );
   }
@@ -121,9 +133,9 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
 
     final products = await DatabaseHelper().getAllProducts();
 
-    setState(() {
+    setState(() async {
       filteredSales = filtered;
-      analytics = generateSalesAnalytics(
+      analytics = await generateSalesAnalytics(
         filtered,
         stockEntries,
         products,
@@ -134,14 +146,14 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
     });
   }
 
-  Map<String, dynamic> generateSalesAnalytics(
+  Future<Map<String, dynamic>> generateSalesAnalytics(
     List<Map<String, dynamic>> sales,
     List<Map<String, dynamic>> stocks,
     List<Map<String, dynamic>> products, {
     required String viewType,
     String? selectedProduct,
     String? selectedCategory,
-  }) {
+  }) async {
     final result = {
       'totalRevenue': 0.0,
       'totalSales': 0,
@@ -150,10 +162,16 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
       'totalPurchaseCost': 0.0,
       'profitMargin': 0.0,
       'transactionCount': 0,
-      'byProduct': <String, dynamic>{},
+      'byProduct': <String, Map<String, dynamic>>{},
       'bestSeller': '',
       'leastSeller': '',
       'priceInsights': <String, Map<String, dynamic>>{},
+      'returns': <String, dynamic>{
+        'totalReturns': 0,
+        'totalReturnValue': 0.0,
+        'byProduct': <String, int>{},
+        'mostReturned': '',
+      },
     };
 
     final Map<String, double> revenueMap = {};
@@ -288,21 +306,62 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
       }
     }
 
+    // Process returns data
+    final returnsData = await DatabaseHelper().getAllReturns();
+    final returnMap = <String, int>{};
+    final returnValueMap = <String, double>{};
+    int totalReturns = 0;
+    double totalReturnValue = 0.0;
+
+    for (var returnItem in returnsData) {
+      final pid = returnItem['product_id'];
+      final qty = returnItem['quantity'] as int;
+      final product = products.firstWhere((p) => p['product_id'] == pid);
+      final purchasePrice = product['purchase_price'] as double;
+      final returnValue = qty * purchasePrice;
+
+      returnMap[pid] = (returnMap[pid] ?? 0) + qty;
+      returnValueMap[pid] = (returnValueMap[pid] ?? 0.0) + returnValue;
+      totalReturns += qty;
+      totalReturnValue += returnValue;
+
+      // Update product analytics with return data
+      if (byProduct.containsKey(pid)) {
+        byProduct[pid]!['returns'] = returnMap[pid];
+        byProduct[pid]!['returnValue'] = returnValueMap[pid];
+      }
+    }
+
+    (result['returns'] as Map<String, dynamic>)['totalReturns'] = totalReturns;
+    (result['returns'] as Map<String, dynamic>)['totalReturnValue'] =
+        totalReturnValue;
+    (result['returns'] as Map<String, dynamic>)['byProduct'] = returnMap;
+
+    // Find most returned product
+    if (returnMap.isNotEmpty) {
+      final mostReturned =
+          returnMap.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+      (result['returns'] as Map<String, dynamic>)['mostReturned'] =
+          productNameMap[mostReturned] ?? '';
+    }
+
     return result;
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = context.watch<ThemeProvider>();
+    // final themeProvider = context.watch<ThemeProvider>();
 
     return Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/background.png'),
+              color: const Color.fromARGB(240, 255, 255, 255),
+              child: Opacity(
+                opacity: 0.3,
+                child: Image.asset(
+                  'assets/images/background.png',
                   fit: BoxFit.cover,
                 ),
               ),
@@ -310,7 +369,7 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
           ),
           Column(
             children: [
-              _buildHeader(),
+              buildHeader(context),
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
@@ -322,14 +381,28 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
                         _buildSectionTitle('Product Performance'),
                         _buildProductPerformance(),
                       ],
-
-                      // _buildBarChartSection(),
+                      _buildReturnsSection(),
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: brightBlue, // Button Blue
+                            side: const BorderSide(color: deepIndigo, width: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 25, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
                           onPressed: exportReportAsPDF,
-                          icon: const Icon(Icons.picture_as_pdf),
-                          label: const Text('Export Report (PDF)'),
+                          icon: const Icon(Icons.picture_as_pdf,
+                              color: Colors.white),
+                          label: const Text(
+                            'Export Report (PDF)',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
+                          ),
                         ),
                       )
                     ],
@@ -340,79 +413,27 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.green,
-        unselectedItemColor:
-            themeProvider.isDarkMode ? Colors.white70 : Colors.black,
-        backgroundColor:
-            themeProvider.isDarkMode ? Colors.grey[900] : Colors.white,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (context) => const HomePage()));
-          }
-          if (index == 1) {
-            Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (context) => const InventoryPage()));
-          }
-          if (index == 3) {
-            Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()));
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.inventory), label: 'Inventory'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart), label: 'Report & Analytics'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(5), bottomRight: Radius.circular(5)),
-        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 5)],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Image.asset('assets/images/logo.png', width: 150),
-          Text(UserSession().companyName ?? '',
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        ],
-      ),
+      bottomNavigationBar: BottomNav(context, 2),
     );
   }
 
   Widget _buildFilterControls() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        alignment: WrapAlignment.start,
         children: [
-          DropdownButton<String>(
-            value: selectedReportType,
-            onChanged: (value) => setState(() {
-              selectedReportType = value!;
-              applyFilters();
-            }),
-            items: reportTypes
-                .map((type) => DropdownMenuItem(
-                      value: type,
-                      child: Text(type),
-                    ))
-                .toList(),
+          _buildStyledDropdown(
+            selectedReportType,
+            reportTypes,
+            (value) {
+              setState(() {
+                selectedReportType = value!;
+                applyFilters();
+              });
+            },
           ),
           if (selectedReportType == 'Custom')
             ElevatedButton(
@@ -429,13 +450,22 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
                   });
                 }
               },
-              child: Text(selectedDateRange == null
-                  ? 'Select Date Range'
-                  : '${DateFormat.yMd().format(selectedDateRange!.start)} - ${DateFormat.yMd().format(selectedDateRange!.end)}'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                side: const BorderSide(color: deepIndigo),
+                elevation: 1,
+              ),
+              child: Text(
+                selectedDateRange == null
+                    ? 'Select Date Range'
+                    : '${DateFormat.yMd().format(selectedDateRange!.start)} - ${DateFormat.yMd().format(selectedDateRange!.end)}',
+                style: const TextStyle(color: deepIndigo),
+              ),
             ),
-          DropdownButton<String>(
-            value: selectedViewType,
-            onChanged: (value) {
+          _buildStyledDropdown(
+            selectedViewType,
+            viewTypes,
+            (value) {
               setState(() {
                 selectedViewType = value!;
                 selectedProduct = null;
@@ -443,41 +473,56 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
                 applyFilters();
               });
             },
-            items: viewTypes
-                .map((type) => DropdownMenuItem(value: type, child: Text(type)))
-                .toList(),
           ),
           if (selectedViewType == 'Product-wise')
-            DropdownButton<String>(
-              value: selectedProduct ?? 'All',
-              onChanged: (value) {
+            _buildStyledDropdown(
+              selectedProduct ?? 'All',
+              ['All', ...allProducts],
+              (value) {
                 setState(() {
                   selectedProduct = (value == 'All') ? null : value;
                   applyFilters();
                 });
               },
-              items: [
-                const DropdownMenuItem(value: 'All', child: Text('All')),
-                ...allProducts
-                    .map((p) => DropdownMenuItem(value: p, child: Text(p))),
-              ],
             )
           else if (selectedViewType == 'Category-wise')
-            DropdownButton<String>(
-              value: selectedCategory ?? 'All',
-              onChanged: (value) {
+            _buildStyledDropdown(
+              selectedCategory ?? 'All',
+              ['All', ...allCategories],
+              (value) {
                 setState(() {
                   selectedCategory = (value == 'All') ? null : value;
                   applyFilters();
                 });
               },
-              items: [
-                const DropdownMenuItem(value: 'All', child: Text('All')),
-                ...allCategories
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c))),
-              ],
-            )
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStyledDropdown(
+      String currentValue, List<String> options, Function(String?) onChanged) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: deepIndigo),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DropdownButton<String>(
+        value: currentValue,
+        underline: const SizedBox(),
+        iconEnabledColor: deepIndigo,
+        dropdownColor: Colors.white,
+        style: const TextStyle(color: deepIndigo),
+        onChanged: onChanged,
+        items: options
+            .map((type) => DropdownMenuItem(
+                  value: type,
+                  child: Text(type),
+                ))
+            .toList(),
       ),
     );
   }
@@ -488,40 +533,59 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
         analytics['priceInsights'] as Map<String, dynamic>? ?? {};
     final selected = selectedProduct != null;
 
+    const TextStyle whiteBold = TextStyle(
+      color: deepIndigo,
+      fontWeight: FontWeight.bold,
+      fontSize: 14,
+    );
+
     return Padding(
       padding: const EdgeInsets.all(15),
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: vibrantBlue.withOpacity(0.2),
           borderRadius: BorderRadius.circular(10),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+          border: Border.all(color: brightBlue, width: 2),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-                'Total Revenue: ৳${analytics['totalRevenue']?.toStringAsFixed(2)}'),
-            Text('Total Sales: ${analytics['totalSales']} units'),
+              'Total Revenue: ৳${analytics['totalRevenue']?.toStringAsFixed(2)}',
+              style: whiteBold,
+            ),
+            Text('Total Sales: ${analytics['totalSales']} units',
+                style: whiteBold),
             // Text(
             //     'Total Purchase Cost: ৳${analytics['totalPurchaseCost']?.toStringAsFixed(2)}'),
             Text(
-                'COGS (Cost of Goods Sold): ৳${analytics['cost']?.toStringAsFixed(2)}'),
-            Text('Number of Transactions: ${analytics['transactionCount']}'),
+                'COGS (Cost of Goods Sold): ৳${analytics['cost']?.toStringAsFixed(2)}',
+                style: whiteBold),
+            Text('Number of Transactions: ${analytics['transactionCount']}',
+                style: whiteBold),
             if (!selected && analytics['bestSeller'] != '')
-              Text('Best Selling Product: ${analytics['bestSeller']}'),
+              Text('Best Selling Product: ${analytics['bestSeller']}',
+                  style: whiteBold),
             if (!selected && analytics['leastSeller'] != '')
-              Text('Least Selling Product: ${analytics['leastSeller']}'),
+              Text('Least Selling Product: ${analytics['leastSeller']}',
+                  style: whiteBold),
             if (!selected && analytics['bestMarginProduct'] != null)
               Text(
                 'Best Profit Margin: ${analytics['bestMarginProduct']} '
                 '(${analytics['bestMarginValue']?.toStringAsFixed(2)}%)',
+                style: whiteBold,
               ),
-            const Divider(),
+            const Divider(
+              color: deepIndigo,
+            ),
             Text(
-                'Gross Profit: ৳${analytics['grossProfit']?.toStringAsFixed(2)}'),
+                'Gross Profit: ৳${analytics['grossProfit']?.toStringAsFixed(2)}',
+                style: whiteBold),
             Text(
-                'Profit Margin: ${analytics['profitMargin']?.toStringAsFixed(2)} %'),
+                'Profit Margin: ${analytics['profitMargin']?.toStringAsFixed(2)} %',
+                style: whiteBold),
             if (selected && byProduct.isNotEmpty)
               Builder(builder: (_) {
                 final pid = byProduct.keys.first;
@@ -532,9 +596,11 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
                     children: [
                       const Divider(),
                       Text(
-                          'Avg Selling Price: ৳${(insight['avgSell'] as double).toStringAsFixed(2)}'),
+                          'Avg Selling Price: ৳${(insight['avgSell'] as double).toStringAsFixed(2)}',
+                          style: whiteBold),
                       Text(
-                          'Avg Purchase Price: ৳${(insight['avgPurchase'] as double).toStringAsFixed(2)}'),
+                          'Avg Purchase Price: ৳${(insight['avgPurchase'] as double).toStringAsFixed(2)}',
+                          style: whiteBold),
                     ],
                   );
                 }
@@ -549,6 +615,12 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
   Widget _buildProductPerformance() {
     final byProduct = analytics['byProduct'] as Map<String, dynamic>;
     final selected = selectedProduct != null;
+
+    const TextStyle whiteBold = TextStyle(
+      color: deepIndigo,
+      fontWeight: FontWeight.bold,
+      fontSize: 14,
+    );
 
     if (!selected || byProduct.isEmpty) {
       return const Padding(
@@ -580,21 +652,25 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
         child: Container(
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: vibrantBlue.withOpacity(0.2),
             borderRadius: BorderRadius.circular(10),
             boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
+            border: Border.all(color: brightBlue, width: 2),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 10),
               Text(' $selectedProduct'),
-              Text('  Units Sold: ${data['sales']}'),
+              Text('  Units Sold: ${data['sales']}', style: whiteBold),
               Text(
-                  '  Revenue: ৳${(data['revenue'] as double).toStringAsFixed(2)}'),
+                  '  Revenue: ৳${(data['revenue'] as double).toStringAsFixed(2)}',
+                  style: whiteBold),
               Text(
-                  '  Profit: ৳${(data['profit'] as double).toStringAsFixed(2)}'),
-              Text('  Stock Remaining: ${data['stockRemaining']}'),
+                  '  Profit: ৳${(data['profit'] as double).toStringAsFixed(2)}',
+                  style: whiteBold),
+              Text('  Stock Remaining: ${data['stockRemaining']}',
+                  style: whiteBold),
             ],
           ),
         ),
@@ -602,51 +678,76 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
     );
   }
 
-  // Widget _buildBarChartSection() {
-  //   final byProduct = analytics['byProduct'] as Map<String, dynamic>;
-  //   final List<BarChartGroupData> barGroups = [];
+  Widget _buildReturnsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Returns Analysis'),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 5,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStatRow(
+                'Total Returns',
+                '${analytics['returns']['totalReturns']} units',
+                Icons.undo,
+              ),
+              const SizedBox(height: 12),
+              _buildStatRow(
+                'Total Return Value',
+                '৳ ${analytics['returns']['totalReturnValue'].toStringAsFixed(2)}',
+                Icons.attach_money,
+              ),
+              const SizedBox(height: 12),
+              _buildStatRow(
+                'Most Returned Product',
+                analytics['returns']['mostReturned'] ?? 'None',
+                Icons.warning,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
-  //   int index = 0;
-  //   byProduct.forEach((key, value) {
-  //     barGroups.add(
-  //       BarChartGroupData(x: index++, barRods: [
-  //         BarChartRodData(toY: value['revenue'], width: 6),
-  //         BarChartRodData(toY: value['cost'], width: 6),
-  //         BarChartRodData(toY: value['profit'], width: 6),
-  //       ]),
-  //     );
-  //   });
-
-  //   return Padding(
-  //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-  //     child: Container(
-  //       height: 300,
-  //       decoration: BoxDecoration(
-  //         color: Colors.white,
-  //         borderRadius: BorderRadius.circular(10),
-  //         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
-  //       ),
-  //       child: BarChart(
-  //         BarChartData(
-  //           barGroups: barGroups,
-  //           titlesData: FlTitlesData(
-  //             leftTitles: AxisTitles(
-  //               sideTitles: SideTitles(showTitles: true, reservedSize: 40),
-  //             ),
-  //             bottomTitles: AxisTitles(
-  //               sideTitles: SideTitles(
-  //                 showTitles: true,
-  //                 getTitlesWidget: (value, meta) {
-  //                   return Text(byProduct.keys.elementAt(value.toInt()));
-  //                 },
-  //               ),
-  //             ),
-  //           ),
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
+  Widget _buildStatRow(String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: vibrantBlue),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black87,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: deepIndigo,
+          ),
+        ),
+      ],
+    );
+  }
 
   Future<void> exportReportAsPDF() async {
     final pdf = pw.Document();
@@ -676,7 +777,8 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
               pw.Text(
                   'Profit Margin: ${byProduct.entries.first.value['margin'].toStringAsFixed(2)}%'),
             pw.Spacer(),
-            pw.Text('Powered by GudamGuru', style: pw.TextStyle(fontSize: 10)),
+            pw.Text('Powered by GudamGuru',
+                style: const pw.TextStyle(fontSize: 10)),
           ],
         ),
       ),
