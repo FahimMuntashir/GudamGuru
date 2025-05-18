@@ -11,11 +11,10 @@ class ReturnItemPage extends StatefulWidget {
 
 class _ReturnItemPageState extends State<ReturnItemPage> {
   final _formKey = GlobalKey<FormState>();
-  final _quantityController = TextEditingController();
-  final _reasonController = TextEditingController();
-  Map<String, dynamic>? _selectedProduct;
   List<Map<String, dynamic>> _products = [];
-  bool _isLoading = true;
+  String? _selectedProductId;
+  String? _quantity;
+  String? _reason;
 
   @override
   void initState() {
@@ -24,54 +23,14 @@ class _ReturnItemPageState extends State<ReturnItemPage> {
   }
 
   Future<void> _loadProducts() async {
-    try {
-      final products = await DatabaseHelper().getAllProducts();
-      setState(() {
-        _products = products;
-        _isLoading = false;
-      });
-    } catch (e) {
-      print('Error loading products: $e');
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _processReturn() async {
-    if (_formKey.currentState!.validate() && _selectedProduct != null) {
-      try {
-        final quantity = int.parse(_quantityController.text);
-        final reason = _reasonController.text;
-
-        // Add to returns table
-        await DatabaseHelper().insertReturn({
-          'product_id': _selectedProduct!['product_id'],
-          'quantity': quantity,
-          'reason': reason,
-          'date_returned': DateTime.now().toIso8601String(),
-        });
-
-        // Update stock
-        await DatabaseHelper().increaseProductQuantity(
-          _selectedProduct!['product_id'],
-          quantity,
-        );
-
-        // Show success message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Item returned successfully')),
-          );
-          Navigator.pop(context);
-        }
-      } catch (e) {
-        print('Error processing return: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error processing return: $e')),
-          );
-        }
+    final db = DatabaseHelper();
+    final products = await db.getAllProducts();
+    setState(() {
+      _products = products;
+      if (_selectedProductId == null && products.isNotEmpty) {
+        _selectedProductId = products.first['product_id'].toString();
       }
-    }
+    });
   }
 
   @override
@@ -82,100 +41,99 @@ class _ReturnItemPageState extends State<ReturnItemPage> {
         backgroundColor: const Color(0xFF211C84),
         foregroundColor: Colors.white,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Product Selection
-                    DropdownButtonFormField<Map<String, dynamic>>(
-                      decoration: const InputDecoration(
-                        labelText: 'Select Product',
-                        border: OutlineInputBorder(),
-                      ),
-                      value: _selectedProduct,
-                      items: _products.map((product) {
-                        return DropdownMenuItem(
-                          value: product,
-                          child: Text(product['name']),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedProduct = value;
-                        });
-                      },
-                      validator: (value) {
-                        if (value == null) {
-                          return 'Please select a product';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Quantity Input
-                    TextFormField(
-                      controller: _quantityController,
-                      decoration: const InputDecoration(
-                        labelText: 'Return Quantity',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter quantity';
-                        }
-                        if (int.tryParse(value) == null) {
-                          return 'Please enter a valid number';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Reason Input
-                    TextFormField(
-                      controller: _reasonController,
-                      decoration: const InputDecoration(
-                        labelText: 'Reason for Return',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 3,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter a reason for return';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Submit Button
-                    ElevatedButton(
-                      onPressed: _processReturn,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF211C84),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: const Text('Process Return'),
-                    ),
-                  ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DropdownButtonFormField<String>(
+                value: _selectedProductId,
+                items: _products.map((product) {
+                  return DropdownMenuItem<String>(
+                    value: product['product_id'].toString(),
+                    child: Text(product['name']),
+                  );
+                }).toList(),
+                onChanged: (String? value) {
+                  setState(() {
+                    _selectedProductId = value;
+                  });
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Select Product',
+                  border: OutlineInputBorder(),
                 ),
+                validator: (value) =>
+                    value == null ? 'Please select a product' : null,
               ),
-            ),
+              const SizedBox(height: 16),
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Return Quantity',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Enter quantity';
+                  if (int.tryParse(value) == null || int.parse(value) <= 0)
+                    return 'Enter a valid quantity';
+                  return null;
+                },
+                onSaved: (value) => _quantity = value,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Reason for Return',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Enter a reason' : null,
+                onSaved: (value) => _reason = value,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _processReturn,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF211C84),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Process Return'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  @override
-  void dispose() {
-    _quantityController.dispose();
-    _reasonController.dispose();
-    super.dispose();
+  Future<void> _processReturn() async {
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
+    final selectedProduct = _products
+        .firstWhere((p) => p['product_id'].toString() == _selectedProductId);
+    final db = DatabaseHelper();
+    await db.insertReturn({
+      'product_id': int.parse(_selectedProductId!),
+      'quantity': int.parse(_quantity!),
+      'reason': _reason,
+      'date_returned': DateTime.now().toIso8601String(),
+      'user_id': 'admin', // Replace with actual user id if available
+    });
+    await db.increaseProductQuantity(
+        _selectedProductId!, int.parse(_quantity!));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Return processed successfully')),
+    );
+    setState(() {
+      _selectedProductId = null;
+      _quantity = null;
+      _reason = null;
+    });
+    _formKey.currentState!.reset();
   }
 }
