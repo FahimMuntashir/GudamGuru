@@ -1,8 +1,11 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'database_helper.dart';
 import 'header&nav.dart';
 import 'providers/theme_provider.dart';
+import 'providers/language_provider.dart';
 
 const Color deepIndigo = Color(0xFF211C84);
 const Color vibrantBlue = Color(0xFF4D55CC);
@@ -15,31 +18,31 @@ class NewProductPage extends StatefulWidget {
   const NewProductPage({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _NewProductPageState createState() => _NewProductPageState();
 }
 
 class _NewProductPageState extends State<NewProductPage> {
   final _formKey = GlobalKey<FormState>();
-
   String selectedUnit = 'KG';
-  final List<String> unitOptions = [
-    'KG',
-    'Pcs',
-    'Litre',
-    'Dozen',
-    'Bags',
-    'Set',
-    'Gauge',
-    'Packet',
-    'Carton',
-    'SQ Metre',
-    'Metre',
-    'SQ Feet',
-    'Feet',
-    'Inch'
-  ];
+  final Map<String, Map<String, String>> unitOptions = {
+    'KG': {'en': 'KG', 'bn': 'কেজি'},
+    'Pcs': {'en': 'Pcs', 'bn': 'টি'},
+    'Litre': {'en': 'Litre', 'bn': 'লিটার'},
+    'Dozen': {'en': 'Dozen', 'bn': 'ডজন'},
+    'Bags': {'en': 'Bags', 'bn': 'ব্যাগ'},
+    'Set': {'en': 'Set', 'bn': 'সেট'},
+    'Gauge': {'en': 'Gauge', 'bn': 'গজ'},
+    'Packet': {'en': 'Packet', 'bn': 'প্যাকেট'},
+    'Carton': {'en': 'Carton', 'bn': 'কার্টন'},
+    'SQ Metre': {'en': 'SQ Metre', 'bn': 'বর্গমিটার'},
+    'Metre': {'en': 'Metre', 'bn': 'মিটার'},
+    'SQ Feet': {'en': 'SQ Feet', 'bn': 'বর্গফুট'},
+    'Feet': {'en': 'Feet', 'bn': 'ফুট'},
+    'Inch': {'en': 'Inch', 'bn': 'ইঞ্চি'},
+  };
 
-  final TextEditingController _productIdController = TextEditingController();
+  // final TextEditingController _productIdController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
@@ -49,9 +52,36 @@ class _NewProductPageState extends State<NewProductPage> {
   final TextEditingController _descriptionController = TextEditingController();
 
   Future<void> _addProduct() async {
+    final themeProvider = context.read<ThemeProvider>();
+    final languageProvider = context.read<LanguageProvider>();
+    final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
+
     if (_formKey.currentState!.validate()) {
+      final db = DatabaseHelper();
+      final productName = _nameController.text.trim();
+
+      final allProducts = await db.getAllProducts();
+      final duplicate = allProducts.any((product) =>
+          product['name'].toString().toLowerCase() ==
+          productName.toLowerCase());
+
+      if (duplicate) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isBangla
+                  ? 'পণ্য ইতোমধ্যে বিদ্যমান। দয়া করে "নতুন আইটেম যোগ করুন" থেকে যুক্ত করুন।'
+                  : 'Product already exists. Please add from "Add New Item".',
+            ),
+            backgroundColor: isDark ? darkShade1 : deepIndigo,
+          ),
+        );
+        return;
+      }
+
       final product = {
-        'product_id': _productIdController.text.trim(),
+        'product_id': await _generateUniqueProductId(),
         'name': _nameController.text.trim(),
         'category': _categoryController.text.trim(),
         'purchase_price': double.tryParse(_priceController.text) ?? 0.0,
@@ -69,11 +99,17 @@ class _NewProductPageState extends State<NewProductPage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Product added successfully!')),
+        SnackBar(
+          content: Text(
+            isBangla
+                ? 'পণ্য সফলভাবে যুক্ত হয়েছে!'
+                : 'Product added successfully!',
+          ),
+          backgroundColor: isDark ? darkShade3 : brightBlue,
+        ),
       );
 
       setState(() {
-        _productIdController.clear();
         _nameController.clear();
         _categoryController.clear();
         _priceController.clear();
@@ -86,10 +122,128 @@ class _NewProductPageState extends State<NewProductPage> {
     }
   }
 
+  void _showConfirmationDialog() {
+    if (_formKey.currentState!.validate()) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          final isDark =
+              Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+          final isBangla =
+              Provider.of<LanguageProvider>(context, listen: false).isBangla;
+
+          return AlertDialog(
+            backgroundColor: isDark ? Colors.black : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+              side: BorderSide(
+                color: isDark ? darkShade3 : deepIndigo,
+                width: 1.5,
+              ),
+            ),
+            title: Text(
+              isBangla
+                  ? 'পণ্যের বিবরণ নিশ্চিত করুন'
+                  : 'Confirm Product Details',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : deepIndigo,
+              ),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSummaryRow(
+                      isBangla ? 'নাম' : 'Name', _nameController.text, isDark),
+                  _buildSummaryRow(isBangla ? 'বিভাগ' : 'Category',
+                      _categoryController.text, isDark),
+                  _buildSummaryRow(isBangla ? 'দর / ইউনিট' : 'Price/unit',
+                      _priceController.text, isDark),
+                  _buildSummaryRow(isBangla ? 'পরিমাণ' : 'Quantity',
+                      _quantityController.text, isDark),
+                  _buildSummaryRow(
+                      isBangla ? 'একক' : 'Unit',
+                      isBangla
+                          ? unitOptions[selectedUnit]!['bn']!
+                          : selectedUnit,
+                      isDark),
+                  _buildSummaryRow(isBangla ? 'ব্র্যান্ড' : 'Brand',
+                      _brandController.text, isDark),
+                  _buildSummaryRow(
+                      isBangla ? 'লো স্টক সতর্কতা' : 'Low Stock Alert',
+                      _lowStockController.text,
+                      isDark),
+                  _buildSummaryRow(isBangla ? 'বিবরণ' : 'Description',
+                      _descriptionController.text, isDark),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  isBangla ? 'বাতিল' : 'Cancel',
+                  style: TextStyle(
+                      color: isDark ? Colors.grey[300] : Colors.black87),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isDark ? darkShade3 : brightBlue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await _addProduct();
+                },
+                child: Text(isBangla ? 'নিশ্চিত করুন' : 'Confirm'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  Widget _buildSummaryRow(String label, String value, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        "$label: ${value.isNotEmpty ? value : '—'}",
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 14.5,
+          color: isDark ? Colors.white : deepIndigo,
+        ),
+      ),
+    );
+  }
+
+  Future<String> _generateUniqueProductId() async {
+    final db = DatabaseHelper();
+    String newId;
+    bool exists = true;
+
+    do {
+      newId =
+          (10000 + (DateTime.now().microsecondsSinceEpoch % 90000)).toString();
+      final existingProduct = await db.getProductById(newId);
+      exists = existingProduct != null;
+    } while (exists);
+
+    return newId;
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
     final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
 
     return Scaffold(
       backgroundColor: isDark
@@ -117,7 +271,7 @@ class _NewProductPageState extends State<NewProductPage> {
                     key: _formKey,
                     child: Column(
                       children: [
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 20),
                         Container(
                           padding: const EdgeInsets.all(15),
                           margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -138,31 +292,37 @@ class _NewProductPageState extends State<NewProductPage> {
                           ),
                           child: Column(
                             children: [
-                              _buildTextField('Add Product ID',
-                                  controller: _productIdController,
-                                  isRequired: true,
-                                  isDark: isDark),
-                              _buildTextField('Enter Category',
-                                  controller: _categoryController,
-                                  isRequired: true,
-                                  isDark: isDark),
-                              _buildTextField('Product Name',
-                                  controller: _nameController,
-                                  isRequired: true,
-                                  isDark: isDark),
-                              _buildTextField('Purchase Price/unit',
-                                  controller: _priceController,
-                                  isRequired: true,
-                                  isNumber: true,
-                                  isDark: isDark),
+                              _buildTextField(
+                                isBangla ? 'বিভাগ লিখুন' : 'Enter Category',
+                                controller: _categoryController,
+                                isRequired: true,
+                                isDark: isDark,
+                              ),
+                              _buildTextField(
+                                isBangla ? 'পণ্যের নাম' : 'Product Name',
+                                controller: _nameController,
+                                isRequired: true,
+                                isDark: isDark,
+                              ),
+                              _buildTextField(
+                                isBangla
+                                    ? 'ক্রয় মূল্য / ইউনিট'
+                                    : 'Purchase Price/unit',
+                                controller: _priceController,
+                                isRequired: true,
+                                isNumber: true,
+                                isDark: isDark,
+                              ),
                               Row(
                                 children: [
                                   Expanded(
-                                    child: _buildTextField('Quantity',
-                                        controller: _quantityController,
-                                        isRequired: true,
-                                        isNumber: true,
-                                        isDark: isDark),
+                                    child: _buildTextField(
+                                      isBangla ? 'পরিমাণ' : 'Quantity',
+                                      controller: _quantityController,
+                                      isRequired: true,
+                                      isNumber: true,
+                                      isDark: isDark,
+                                    ),
                                   ),
                                   const SizedBox(width: 10),
                                   DropdownButton<String>(
@@ -175,52 +335,66 @@ class _NewProductPageState extends State<NewProductPage> {
                                     ),
                                     iconEnabledColor:
                                         isDark ? darkShade1 : deepIndigo,
-                                    items: unitOptions.map((String unit) {
+                                    items: unitOptions.entries.map((entry) {
+                                      final unitKey = entry.key;
+                                      final unitLabel = isBangla
+                                          ? entry.value['bn']!
+                                          : entry.value['en']!;
                                       return DropdownMenuItem<String>(
-                                        value: unit,
-                                        child: Text(unit,
-                                            style: TextStyle(
-                                                color: isDark
-                                                    ? Colors.white
-                                                    : Colors.black)),
+                                        value: unitKey,
+                                        child: Text(unitLabel),
                                       );
                                     }).toList(),
                                     onChanged: (String? newValue) {
-                                      setState(() {
-                                        selectedUnit = newValue!;
-                                      });
+                                      if (newValue != null) {
+                                        setState(() {
+                                          selectedUnit = newValue;
+                                        });
+                                      }
                                     },
                                   ),
                                 ],
                               ),
-                              _buildTextField('Brand Name',
-                                  controller: _brandController, isDark: isDark),
-                              _buildTextField('Set Low Stock Alert',
-                                  controller: _lowStockController,
-                                  isNumber: true,
-                                  isDark: isDark),
-                              _buildTextField('Description',
-                                  controller: _descriptionController,
-                                  maxLines: 3,
-                                  isDark: isDark),
+                              _buildTextField(
+                                isBangla ? 'ব্র্যান্ড নাম' : 'Brand Name',
+                                controller: _brandController,
+                                isDark: isDark,
+                              ),
+                              _buildTextField(
+                                isBangla
+                                    ? 'লো স্টক সতর্কতা সেট করুন'
+                                    : 'Set Low Stock Alert',
+                                controller: _lowStockController,
+                                isNumber: true,
+                                isDark: isDark,
+                              ),
+                              _buildTextField(
+                                isBangla ? 'বিবরণ' : 'Description',
+                                controller: _descriptionController,
+                                maxLines: 3,
+                                isDark: isDark,
+                              ),
                               const SizedBox(height: 10),
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor:
                                       isDark ? darkShade1 : brightBlue,
                                   side: BorderSide(
-                                      color: isDark ? darkShade3 : deepIndigo,
-                                      width: 1.5),
+                                    color: isDark ? darkShade3 : deepIndigo,
+                                    width: 1.5,
+                                  ),
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 40, vertical: 15),
+                                    horizontal: 40,
+                                    vertical: 15,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(30),
                                   ),
                                 ),
-                                onPressed: _addProduct,
-                                child: const Text(
-                                  'Add Product',
-                                  style: TextStyle(
+                                onPressed: _showConfirmationDialog,
+                                child: Text(
+                                  isBangla ? 'পণ্য যোগ করুন' : 'Add Product',
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -240,7 +414,7 @@ class _NewProductPageState extends State<NewProductPage> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNav(context, null),
+      bottomNavigationBar: bottomNav(context, null),
     );
   }
 
@@ -274,14 +448,19 @@ class _NewProductPageState extends State<NewProductPage> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(
-                color: isDark ? darkShade3 : Color.fromARGB(255, 13, 0, 255),
+                color:
+                    isDark ? darkShade3 : const Color.fromARGB(255, 13, 0, 255),
                 width: 2),
           ),
         ),
         validator: isRequired
             ? (value) {
+                final isBangla = context.read<LanguageProvider>().isBangla;
+
                 if (value == null || value.trim().isEmpty) {
-                  return 'This field is required';
+                  return isBangla
+                      ? 'এই ঘরটি পূরণ করা আবশ্যক'
+                      : 'This field is required';
                 }
                 return null;
               }
