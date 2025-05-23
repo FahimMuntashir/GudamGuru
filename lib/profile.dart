@@ -11,6 +11,12 @@ import 'providers/theme_provider.dart';
 import 'providers/language_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'homepage.dart';
+import 'database_helper.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
+
+// import 'package:permission_handler/permission_handler.dart';
 
 const Color deepIndigo = Color(0xFF211C84);
 const Color vibrantBlue = Color(0xFF4D55CC);
@@ -34,117 +40,6 @@ class _ProfilePageState extends State<ProfilePage> {
     {'key': 'Bangla', 'label': 'বাংলা'},
   ];
 
-  // void _showChangePasswordDialog(BuildContext context) {
-  //   TextEditingController oldPass = TextEditingController();
-  //   TextEditingController newPass = TextEditingController();
-  //   TextEditingController confirmPass = TextEditingController();
-
-  //   bool _obscureOld = true;
-  //   bool _obscureNew = true;
-  //   bool _obscureConfirm = true;
-
-  //   showDialog(
-  //     context: context,
-  //     builder: (BuildContext dialogContext) {
-  //       return StatefulBuilder(
-  //         builder: (context, setState) {
-  //           return AlertDialog(
-  //             title: const Text('Change Password'),
-  //             content: Column(
-  //               mainAxisSize: MainAxisSize.min,
-  //               children: [
-  //                 TextField(
-  //                   controller: oldPass,
-  //                   obscureText: _obscureOld,
-  //                   decoration: InputDecoration(
-  //                     labelText: 'Old Password',
-  //                     suffixIcon: IconButton(
-  //                       icon: Icon(_obscureOld
-  //                           ? Icons.visibility_off
-  //                           : Icons.visibility),
-  //                       onPressed: () {
-  //                         setState(() {
-  //                           _obscureOld = !_obscureOld;
-  //                         });
-  //                       },
-  //                     ),
-  //                   ),
-  //                 ),
-  //                 TextField(
-  //                   controller: newPass,
-  //                   obscureText: _obscureNew,
-  //                   decoration: InputDecoration(
-  //                     labelText: 'New Password',
-  //                     suffixIcon: IconButton(
-  //                       icon: Icon(_obscureNew
-  //                           ? Icons.visibility_off
-  //                           : Icons.visibility),
-  //                       onPressed: () {
-  //                         setState(() {
-  //                           _obscureNew = !_obscureNew;
-  //                         });
-  //                       },
-  //                     ),
-  //                   ),
-  //                 ),
-  //                 TextField(
-  //                   controller: confirmPass,
-  //                   obscureText: _obscureConfirm,
-  //                   decoration: InputDecoration(
-  //                     labelText: 'Confirm New Password',
-  //                     suffixIcon: IconButton(
-  //                       icon: Icon(_obscureConfirm
-  //                           ? Icons.visibility_off
-  //                           : Icons.visibility),
-  //                       onPressed: () {
-  //                         setState(() {
-  //                           _obscureConfirm = !_obscureConfirm;
-  //                         });
-  //                       },
-  //                     ),
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //             actions: [
-  //               TextButton(
-  //                 child: const Text('Cancel'),
-  //                 onPressed: () => Navigator.of(dialogContext).pop(),
-  //               ),
-  //               TextButton(
-  //                 child: const Text('Change'),
-  //                 onPressed: () async {
-  //                   if (newPass.text != confirmPass.text) {
-  //                     Navigator.of(dialogContext).pop();
-  //                     ScaffoldMessenger.of(context).showSnackBar(
-  //                       const SnackBar(
-  //                           content: Text('Passwords do not match.')),
-  //                     );
-  //                     return;
-  //                   }
-
-  //                   var url = Uri.parse(
-  //                       'http://192.168.0.179/gudamguru_api/change_password.php');
-  //                   var response = await http.post(url, body: {
-  //                     'user_id': UserSession().userId,
-  //                     'old_password': oldPass.text,
-  //                     'new_password': newPass.text,
-  //                   });
-
-  //                   var data = json.decode(response.body);
-  //                   Navigator.of(dialogContext).pop();
-  //                   ScaffoldMessenger.of(context).showSnackBar(
-  //                     SnackBar(content: Text(data['message'])),
-  //                   );
-  //                 },
-  //               ),
-  //             ],
-  //           );
-  //         },
-  //       );
-  //     },
-  //   );
-  // }
   void _showChangePasswordDialog(BuildContext context) {
     TextEditingController oldPass = TextEditingController();
     TextEditingController newPass = TextEditingController();
@@ -308,95 +203,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // void _confirmDeleteAccount(BuildContext context) {
-  //   showDialog(
-  //     context: context,
-  //     builder: (BuildContext dialogContext) {
-  //       return AlertDialog(
-  //         title: const Text('Confirm Deletion'),
-  //         content: const Text(
-  //             'Are you sure you want to permanently delete this account?'),
-  //         actions: [
-  //           TextButton(
-  //             child: const Text('Cancel'),
-  //             onPressed: () => Navigator.of(dialogContext).pop(),
-  //           ),
-  //           TextButton(
-  //             child: const Text('Proceed'),
-  //             onPressed: () {
-  //               Navigator.of(dialogContext).pop();
-  //               _showOtpDialog(context);
-  //             },
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
-
-  // void _showOtpDialog(BuildContext context) {
-  //   TextEditingController otpController = TextEditingController();
-
-  //   showDialog(
-  //     context: context,
-  //     builder: (BuildContext dialogContext) {
-  //       return AlertDialog(
-  //         title: const Text('Enter OTP'),
-  //         content: TextField(
-  //           controller: otpController,
-  //           keyboardType: TextInputType.number,
-  //           decoration: const InputDecoration(
-  //             hintText: 'Enter OTP sent to your phone',
-  //           ),
-  //         ),
-  //         actions: [
-  //           TextButton(
-  //             child: const Text('Cancel'),
-  //             onPressed: () => Navigator.of(dialogContext).pop(),
-  //           ),
-  //           TextButton(
-  //             child: const Text('Confirm'),
-  //             onPressed: () async {
-  //               Navigator.of(dialogContext).pop();
-  //               String enteredOtp = otpController.text.trim();
-
-  //               if (enteredOtp == '111111') {
-  //                 // Proceed to delete account
-  //                 var url = Uri.parse(
-  //                     'http://192.168.0.179/gudamguru_api/delete_account.php');
-  //                 var response = await http.post(url, body: {
-  //                   'user_id': UserSession().userId,
-  //                 });
-
-  //                 var data = json.decode(response.body);
-  //                 if (data['status'] == 'success') {
-  //                   UserSession().clear();
-  //                   if (!mounted) return;
-  //                   Navigator.pushReplacement(
-  //                     context,
-  //                     MaterialPageRoute(
-  //                         builder: (context) => const LoginPage()),
-  //                   );
-  //                 } else {
-  //                   if (!mounted) return;
-  //                   ScaffoldMessenger.of(context).showSnackBar(
-  //                     SnackBar(content: Text(data['message'])),
-  //                   );
-  //                 }
-  //               } else {
-  //                 if (!mounted) return;
-  //                 ScaffoldMessenger.of(context).showSnackBar(
-  //                   const SnackBar(content: Text('Invalid OTP')),
-  //                 );
-  //               }
-  //             },
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
-
   void _confirmLogout(BuildContext context) {
     showDialog(
       context: context,
@@ -466,20 +272,67 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> exportDatabaseToDownloads() async {
-    final dbPath =
-        // ignore: prefer_interpolation_to_compose_strings
-        (await getApplicationDocumentsDirectory()).path + '/gudamguru.db';
-    final downloadsDir = Directory('/storage/emulated/0/Download');
-    final newPath = '${downloadsDir.path}/gudamguru.db';
+    try {
+      final dbPath =
+          '${(await getApplicationDocumentsDirectory()).path}/gudamguru.db';
+      final originalDb = File(dbPath);
 
-    final File originalDb = File(dbPath);
-    final File exportedDb = File(newPath);
+      if (!await originalDb.exists()) {
+        print('Database file not found');
+        return;
+      }
 
-    if (await originalDb.exists()) {
-      await exportedDb.writeAsBytes(await originalDb.readAsBytes());
-      print('Database exported to: $newPath');
-    } else {
-      print('Database file not found.');
+      final rawName = UserSession().companyName ?? 'backup';
+      final sanitizedName = rawName
+          .trim()
+          .replaceAll(RegExp(r'[^\w\s]+'), '')
+          .replaceAll(' ', '_');
+      final filename = '${sanitizedName.toLowerCase()}.db';
+
+      //Copy to a temp file with the new name
+      final tempDir = await getTemporaryDirectory();
+      final tempPath = '${tempDir.path}/$filename';
+      final tempFile =
+          await File(tempPath).writeAsBytes(await originalDb.readAsBytes());
+
+      // ignore: deprecated_member_use
+      await Share.shareXFiles(
+        [XFile(tempFile.path)],
+        text: '$rawName database backup',
+      );
+
+      print('Shared database: $tempPath');
+    } catch (e) {
+      print('Error sharing database: $e');
+    }
+  }
+
+  Future<void> importDatabaseFromUser() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+      );
+
+      if (result == null || result.files.single.path == null) {
+        print('No file selected.');
+        return;
+      }
+
+      final selectedPath = result.files.single.path!;
+      final selectedFile = File(selectedPath);
+
+      // Check extension manually
+      if (!selectedPath.toLowerCase().endsWith('.db')) {
+        print('The selected file is not a .db file.');
+        return;
+      }
+
+      final appDir = await getApplicationDocumentsDirectory();
+      final newPath = '${appDir.path}/gudamguru.db';
+      await selectedFile.copy(newPath);
+      print('Imported DB to: $newPath');
+    } catch (e) {
+      print('Error importing database: $e');
     }
   }
 
@@ -860,6 +713,91 @@ class _ProfilePageState extends State<ProfilePage> {
                 tooltip: isBangla ? 'লগআউট করুন' : 'Logout',
               ),
             ),
+            ListTile(
+              title: Text(
+                isBangla ? 'ডাটাবেজ আপলোড করুন' : 'Upload Database',
+                style: themedBoldTextStyle(
+                  isDark: isDark,
+                  weight: FontWeight.w600,
+                ),
+              ),
+              trailing: IconButton(
+                icon: Icon(
+                  Icons.upload_file,
+                  color: isDark ? Colors.white : deepIndigo,
+                ),
+                tooltip: isBangla
+                    ? 'আপনার ডাটাবেজ আপলোড করুন'
+                    : 'Upload your database',
+                onPressed: () {
+                  final outerContext = context;
+
+                  showDialog(
+                    context: outerContext,
+                    builder: (dialogContext) => AlertDialog(
+                      backgroundColor: isDark ? darkShade1 : Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      title: Text(
+                        isBangla ? 'আপলোড নিশ্চিত করুন' : 'Confirm Upload',
+                        style: themedBoldTextStyle(
+                          isDark: isDark,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                      content: Text(
+                        isBangla
+                            ? 'এই অপারেশন আপনার বর্তমান ডাটাবেজটি প্রতিস্থাপন করবে। আপনি কি নিশ্চিত?'
+                            : 'This will replace your current database. Are you sure?',
+                        style: themedBoldTextStyle(
+                          isDark: isDark,
+                          weight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          child: Text(
+                            isBangla ? 'বাতিল' : 'Cancel',
+                            style: themedBoldTextStyle(
+                              isDark: isDark,
+                              weight: FontWeight.w600,
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isDark ? darkShade3 : brightBlue,
+                          ),
+                          child: Text(
+                            isBangla ? 'আপলোড' : 'Upload',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          onPressed: () async {
+                            Navigator.of(dialogContext).pop();
+                            await importDatabaseFromUser();
+                            DatabaseHelper().resetDatabaseConnection();
+
+                            if (!mounted) return;
+                            Navigator.pushAndRemoveUntil(
+                              outerContext,
+                              MaterialPageRoute(
+                                  builder: (context) => const HomePage()),
+                              (route) => false,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            )
           ],
         ),
       ),
