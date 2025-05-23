@@ -1,5 +1,9 @@
-import 'dart:io';
+// ignore_for_file: avoid_print, use_build_context_synchronously
 
+import 'dart:io';
+import 'package:provider/provider.dart';
+import 'providers/theme_provider.dart';
+import 'providers/language_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 // import 'package:pdf/pdf.dart';
@@ -9,10 +13,18 @@ import 'header&nav.dart';
 import 'UserSession.dart';
 import 'database_helper.dart';
 
+const Color deepIndigo = Color(0xFF211C84);
+const Color vibrantBlue = Color(0xFF4D55CC);
+const Color brightBlue = Color(0xFF0037FF);
+const Color darkShade1 = Color.fromARGB(255, 24, 28, 20);
+const Color darkShade2 = Color.fromARGB(255, 60, 61, 55);
+const Color darkShade3 = Color.fromARGB(255, 105, 117, 101);
+
 class LowStockPage extends StatefulWidget {
   const LowStockPage({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _LowStockPageState createState() => _LowStockPageState();
 }
 
@@ -23,23 +35,27 @@ class _LowStockPageState extends State<LowStockPage> {
   Map<String, dynamic> stockSummary = {};
   final DatabaseHelper _dbHelper = DatabaseHelper();
   bool isLoading = true;
+  double _totalStockValue = 0.0;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _calculateTotalStockValue();
   }
 
   Future<void> _loadData() async {
     setState(() => isLoading = true);
     try {
-      final lowStock = await _dbHelper.getLowStockProducts();
+      final allLowStock = await _dbHelper.getLowStockProducts();
+      final lowStock =
+          allLowStock.where((item) => (item['total_stock'] ?? 0) > 0).toList();
       final outOfStock = await _dbHelper.getOutOfStockProducts();
       final summary = await _dbHelper.getStockSummary();
 
       setState(() {
-        lowStockProducts = lowStock;
-        outOfStockProducts = outOfStock;
+        lowStockProducts = List<Map<String, dynamic>>.from(lowStock);
+        outOfStockProducts = List<Map<String, dynamic>>.from(outOfStock);
         stockSummary = summary;
         isLoading = false;
       });
@@ -166,6 +182,7 @@ class _LowStockPageState extends State<LowStockPage> {
       await file.writeAsBytes(await pdf.save());
 
       // Share the PDF
+      // ignore: deprecated_member_use
       await Share.shareXFiles([XFile(file.path)], text: 'Stock Alert Report');
     } catch (e) {
       print('Error generating PDF: $e');
@@ -175,155 +192,309 @@ class _LowStockPageState extends State<LowStockPage> {
     }
   }
 
+  Future<void> _calculateTotalStockValue() async {
+    final products = await DatabaseHelper().getAllProducts();
+    double total = 0.0;
+    for (var product in products) {
+      final stockEntries = await DatabaseHelper()
+          .getStockEntriesForProduct(product['product_id']);
+      int restockQty = stockEntries.fold(
+          0, (sum, entry) => sum + (entry['quantity'] as int));
+      int initialQty = product['quantity'] - restockQty;
+      total += (initialQty * product['purchase_price']) +
+          stockEntries.fold(
+              0.0,
+              (sum, entry) =>
+                  sum + (entry['purchase_price'] * entry['quantity']));
+    }
+    setState(() {
+      _totalStockValue = total;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final languageProvider = context.watch<LanguageProvider>();
+    final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
+
     return Scaffold(
+      backgroundColor: isDark
+          ? const Color.fromARGB(240, 0, 0, 0)
+          : const Color.fromARGB(240, 255, 255, 255),
       body: Stack(
         children: [
           Positioned.fill(
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/background.png'),
-                  fit: BoxFit.cover,
-                ),
+            child: Opacity(
+              opacity: 0.1,
+              child: Image.asset(
+                'assets/images/background.png',
+                fit: BoxFit.cover,
               ),
             ),
           ),
-          Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      // Header
-                      buildHeader(context),
-                      const SizedBox(height: 20),
-
-                      if (isLoading)
-                        const Center(child: CircularProgressIndicator())
-                      else ...[
-                        // Sorting Button
+          SafeArea(
+            child: Column(
+              children: [
+                buildHeader(context),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 20),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Sort by Stock Level:'),
+                              Text(
+                                isBangla
+                                    ? 'স্টকের পরিমাণ অনুসারে সাজান:'
+                                    : 'Sort by Stock Level:',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : deepIndigo,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               IconButton(
-                                icon: Icon(sortAscending
-                                    ? Icons.arrow_upward
-                                    : Icons.arrow_downward),
+                                icon: Icon(
+                                  sortAscending
+                                      ? Icons.arrow_upward
+                                      : Icons.arrow_downward,
+                                  color: isDark ? Colors.white : deepIndigo,
+                                ),
                                 onPressed: _sortStock,
                               ),
                             ],
                           ),
                         ),
-
-                        // Low Stock Alerts
-                        _buildSectionTitle('Low Stock Alerts'),
+                        _buildSectionTitle(isBangla
+                            ? 'নিম্ন স্টক সতর্কতা'
+                            : 'Low Stock Alerts'),
                         _buildLowStockList(),
-
-                        // Out of Stock Alerts
-                        _buildSectionTitle('Out of Stock Alerts'),
+                        const SizedBox(height: 15),
+                        _buildSectionTitle(isBangla
+                            ? 'স্টক শেষ সতর্কতা'
+                            : 'Out of Stock Alerts'),
                         _buildOutOfStockList(),
-
-                        // Stock Report
-                        _buildSectionTitle('Stock Report'),
+                        const SizedBox(height: 15),
+                        _buildSectionTitle(
+                            isBangla ? 'স্টক রিপোর্ট' : 'Stock Report'),
                         _buildStockReport(),
-
-                        // Export Button
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 20),
-                          child: ElevatedButton(
-                            onPressed: _exportToPDF,
-                            child: const Text(
-                                'Export Stock Alert Report (📤 PDF)'),
+                          child: Center(
+                            child: ElevatedButton.icon(
+                              onPressed: _exportToPDF,
+                              icon: const Icon(Icons.picture_as_pdf,
+                                  color: Colors.white),
+                              label: Text(
+                                isBangla
+                                    ? 'স্টক রিপোর্ট এক্সপোর্ট করুন'
+                                    : 'Export Stock Alert Report',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    isDark ? darkShade1 : brightBlue,
+                                side: BorderSide(
+                                    color: isDark ? darkShade3 : deepIndigo,
+                                    width: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 25, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
-
-      // Bottom Navigation Bar
-      bottomNavigationBar: BottomNav(context, null),
+      bottomNavigationBar: bottomNav(context, null),
     );
   }
 
   Widget _buildLowStockList() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
+
     if (lowStockProducts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(20),
-        child: Text('No low stock products found'),
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Text(
+          isBangla
+              ? 'নিম্ন স্টক পণ্য পাওয়া যায়নি'
+              : 'No low stock products found',
+          style: TextStyle(color: isDark ? Colors.white : Colors.grey),
+        ),
       );
     }
 
-    return Column(
-      children: lowStockProducts.map((product) {
-        return ListTile(
-          title: Text('${product['name']} - ${product['total_stock']} left'),
-          subtitle: Text('Reorder at ${product['low_stock_alert']}'),
-          trailing: const Icon(Icons.warning, color: Colors.orange),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildOutOfStockList() {
-    if (outOfStockProducts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(20),
-        child: Text('No out of stock products found'),
-      );
-    }
-
-    return Column(
-      children: outOfStockProducts.map((product) {
-        return ListTile(
-          title: Text('${product['name']} - Out of Stock'),
-          trailing: const Icon(Icons.error, color: Colors.red),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildStockReport() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark
+              ? darkShade1.withOpacity(0.5)
+              : vibrantBlue.withOpacity(0.2),
           borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 5,
-              spreadRadius: 2,
-            ),
-          ],
+          border: Border.all(color: isDark ? darkShade3 : brightBlue, width: 2),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
         ),
         child: Column(
+          children: lowStockProducts.map((product) {
+            final productName = product['name'];
+            final totalStock = product['total_stock'];
+            final reorderLevel = product['low_stock_alert'];
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      isBangla
+                          ? '$productName - $totalStock টি বাকি (পুনর্বিন্যাস সীমা $reorderLevel)'
+                          : '$productName - $totalStock left (Reorder at $reorderLevel)',
+                      style: TextStyle(
+                        color: isDark ? Colors.white : deepIndigo,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.warning, color: Colors.orange, size: 20),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOutOfStockList() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
+
+    if (outOfStockProducts.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Text(
+          isBangla
+              ? 'স্টক শেষ হওয়া কোনো পণ্য পাওয়া যায়নি'
+              : 'No out of stock products found',
+          style: TextStyle(color: isDark ? Colors.white : Colors.grey),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: isDark
+              ? darkShade1.withOpacity(0.5)
+              : vibrantBlue.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: isDark ? darkShade3 : brightBlue, width: 2),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
+        ),
+        child: Column(
+          children: outOfStockProducts.map((product) {
+            final productName = product['name'];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      isBangla
+                          ? '$productName - স্টক শেষ'
+                          : '$productName - Out of Stock',
+                      style: TextStyle(
+                        color: isDark ? Colors.white : deepIndigo,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.error, color: Colors.red, size: 20),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStockReport() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
+
+    TextStyle whiteBold = TextStyle(
+      color: isDark ? Colors.white : deepIndigo,
+      fontWeight: FontWeight.bold,
+      fontSize: 14,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: isDark
+              ? darkShade1.withOpacity(0.5)
+              : vibrantBlue.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+          border: Border.all(color: isDark ? darkShade3 : brightBlue, width: 2),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ListTile(
-              title: Text(
-                  'Current Stock Value: ${stockSummary['total_value']?.toStringAsFixed(2) ?? '0.00'} TK'),
+            Text(
+              isBangla
+                  ? 'বর্তমান স্টক মূল্য: ৳${_totalStockValue.toStringAsFixed(2)}'
+                  : 'Current Stock Value: ৳${_totalStockValue.toStringAsFixed(2)}',
+              style: whiteBold,
             ),
-            ListTile(
-              title: Text(
-                  'Fastest Moving Products: ${stockSummary['fastest_moving']?.join(', ') ?? 'None'}'),
+            const SizedBox(height: 8),
+            Text(
+              isBangla
+                  ? 'সর্বাধিক বিক্রিত পণ্য: ${stockSummary['fastest_moving']?.join(', ') ?? 'কোনোটি না'}'
+                  : 'Fastest Moving Products: ${stockSummary['fastest_moving']?.join(', ') ?? 'None'}',
+              style: whiteBold,
             ),
-            ListTile(
-              title: Text(
-                  'Slow-Moving or Dead Stock: ${stockSummary['slow_moving']?.join(', ') ?? 'None'}'),
+            const SizedBox(height: 8),
+            Text(
+              isBangla
+                  ? 'স্লো/ডেড স্টক: ${stockSummary['slow_moving']?.join(', ') ?? 'কোনোটি না'}'
+                  : 'Slow-Moving or Dead Stock: ${stockSummary['slow_moving']?.join(', ') ?? 'None'}',
+              style: whiteBold,
             ),
           ],
         ),
@@ -332,11 +503,18 @@ class _LowStockPageState extends State<LowStockPage> {
   }
 
   Widget _buildSectionTitle(String title) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final bool isDark = themeProvider.isDarkMode;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: isDark ? Colors.white : deepIndigo,
+        ),
       ),
     );
   }

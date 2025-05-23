@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
-// import 'package:provider/provider.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 // import 'package:fl_chart/fl_chart.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-
+import 'header&nav.dart';
 import 'UserSession.dart';
 import 'database_helper.dart';
-import 'header&nav.dart';
-// import 'providers/theme_provider.dart';
+import 'providers/theme_provider.dart';
+import 'providers/language_provider.dart';
 
 const Color deepIndigo = Color(0xFF211C84);
 const Color vibrantBlue = Color(0xFF4D55CC);
 const Color brightBlue = Color(0xFF0037FF);
+const Color darkShade1 = Color.fromARGB(255, 24, 28, 20);
+const Color darkShade2 = Color.fromARGB(255, 60, 61, 55);
+const Color darkShade3 = Color.fromARGB(255, 105, 117, 101);
 
 class ReportAnalyticsPage extends StatefulWidget {
   const ReportAnalyticsPage({super.key});
@@ -35,6 +38,20 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
   List<Map<String, dynamic>> stockEntries = [];
   List<String> allProducts = [];
   List<String> allCategories = [];
+  Map<String, dynamic>? returnAnalytics;
+
+  final Map<String, Map<String, String>> reportTypeLabels = {
+    'Daily': {'en': 'Daily', 'bn': 'দৈনিক'},
+    'Weekly': {'en': 'Weekly', 'bn': 'সাপ্তাহিক'},
+    'Monthly': {'en': 'Monthly', 'bn': 'মাসিক'},
+    'Yearly': {'en': 'Yearly', 'bn': 'বার্ষিক'},
+    'Custom': {'en': 'Custom', 'bn': 'কাস্টম'},
+  };
+
+  final Map<String, Map<String, String>> viewTypeLabels = {
+    'Product-wise': {'en': 'Product-wise', 'bn': 'পণ্যভিত্তিক'},
+    'Category-wise': {'en': 'Category-wise', 'bn': 'বিভাগভিত্তিক'},
+  };
 
   Map<String, dynamic> analytics = {
     'totalRevenue': 0.0,
@@ -47,12 +64,6 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
     'bestSeller': '',
     'leastSeller': '',
     'priceInsights': <String, dynamic>{},
-    'returns': {
-      'totalReturns': 0,
-      'totalReturnValue': 0.0,
-      'byProduct': <String, dynamic>{},
-      'mostReturned': '',
-    },
   };
 
   @override
@@ -67,7 +78,6 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
     List<Map<String, dynamic>> sales = await db.getAllSales();
     List<Map<String, dynamic>> stocks = [];
     List<Map<String, dynamic>> products = await db.getAllProducts();
-    List<Map<String, dynamic>> returns = await db.getAllReturns();
 
     for (var p in products) {
       stocks += await db.getStockEntriesForProduct(p['product_id']);
@@ -85,14 +95,17 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
   }
 
   Widget _buildSectionTitle(String title) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final bool isDark = themeProvider.isDarkMode;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: deepIndigo,
+          color: isDark ? Colors.white : deepIndigo,
         ),
       ),
     );
@@ -119,8 +132,17 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
         range = DateTimeRange(start: DateTime(now.year), end: now);
         break;
       case 'Custom':
-        range = selectedDateRange ?? DateTimeRange(start: now, end: now);
+        final selectedStart = selectedDateRange?.start ?? now;
+        final selectedEnd = selectedDateRange?.end ?? now;
+
+        range = DateTimeRange(
+          start: DateTime(
+              selectedStart.year, selectedStart.month, selectedStart.day),
+          end: DateTime(
+              selectedEnd.year, selectedEnd.month, selectedEnd.day, 23, 59, 59),
+        );
         break;
+
       default:
         range = DateTimeRange(start: now, end: now);
     }
@@ -133,16 +155,37 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
 
     final products = await DatabaseHelper().getAllProducts();
 
-    setState(() async {
+    final updatedAnalytics = await generateSalesAnalytics(
+      filtered,
+      stockEntries,
+      products,
+      viewType: selectedViewType,
+      selectedProduct: selectedProduct,
+      selectedCategory: selectedCategory,
+      range: range,
+    );
+
+    final productNameMap = {
+      for (var p in products)
+        p['product_id'].toString(): (p['name'] ?? '').toString()
+    };
+
+    final byProductMap = Map<String, Map<String, dynamic>>.from(
+      (updatedAnalytics['byProduct'] ?? {}) as Map,
+    );
+
+    final returns = await generateReturnAnalytics(
+      products,
+      byProductMap,
+      productNameMap,
+      range,
+      selectedProduct: selectedProduct,
+    );
+
+    setState(() {
       filteredSales = filtered;
-      analytics = await generateSalesAnalytics(
-        filtered,
-        stockEntries,
-        products,
-        viewType: selectedViewType,
-        selectedProduct: selectedProduct,
-        selectedCategory: selectedCategory,
-      );
+      analytics = updatedAnalytics;
+      returnAnalytics = returns;
     });
   }
 
@@ -153,6 +196,7 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
     required String viewType,
     String? selectedProduct,
     String? selectedCategory,
+    DateTimeRange? range,
   }) async {
     final result = {
       'totalRevenue': 0.0,
@@ -162,21 +206,14 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
       'totalPurchaseCost': 0.0,
       'profitMargin': 0.0,
       'transactionCount': 0,
-      'byProduct': <String, Map<String, dynamic>>{},
+      'byProduct': <String, dynamic>{},
       'bestSeller': '',
       'leastSeller': '',
       'priceInsights': <String, Map<String, dynamic>>{},
-      'returns': <String, dynamic>{
-        'totalReturns': 0,
-        'totalReturnValue': 0.0,
-        'byProduct': <String, int>{},
-        'mostReturned': '',
-      },
     };
 
     final Map<String, double> revenueMap = {};
     final Map<String, int> salesQtyMap = {};
-    final Map<String, int> transactionCountMap = {};
     final Map<String, List<double>> unitPrices = {};
     final Map<String, List<double>> purchasePrices = {};
     final Map<String, int> actualStockQty = {
@@ -189,7 +226,16 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
       for (var p in products) p['product_id']: p['category'] ?? ''
     };
 
-    // Collect all known purchase prices from stock (for price insights only)
+    // Get selectedProductId if filtering by product name
+    String? selectedProductId;
+    if (selectedProduct != null) {
+      selectedProductId = products.firstWhere(
+        (p) => (p['name'] ?? '').toLowerCase() == selectedProduct.toLowerCase(),
+        orElse: () => {},
+      )['product_id'];
+    }
+
+    // Collect purchase prices and total purchase cost
     for (var entry in stocks) {
       final pid = entry['product_id'];
       purchasePrices.putIfAbsent(pid, () => []).add(entry['purchase_price']);
@@ -209,13 +255,9 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
 
     for (var sale in sales) {
       final pid = sale['product_id'];
-      final name = sale['name'];
 
-      // Filter by selected product (product-wise)
-      if (selectedProduct != null &&
-          name.toLowerCase() != selectedProduct.toLowerCase()) continue;
+      if (selectedProductId != null && pid != selectedProductId) continue;
 
-      // Filter by selected category (category-wise)
       if (viewType == 'Category-wise' &&
           selectedCategory != null &&
           (productCategoryMap[pid]?.toLowerCase() ?? '') !=
@@ -224,12 +266,10 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
       final qtySold = sale['quantity'] as int;
       final revenue = sale['total_price'] as double;
       final purchasePrice = (sale['purchase_price'] ?? 0.0) as double;
-
       final cost = qtySold * purchasePrice;
 
       revenueMap[pid] = (revenueMap[pid] ?? 0) + revenue;
       salesQtyMap[pid] = (salesQtyMap[pid] ?? 0) + qtySold;
-      transactionCountMap[pid] = (transactionCountMap[pid] ?? 0) + 1;
       unitPrices.putIfAbsent(pid, () => []).add(sale['unit_price']);
 
       final existing = byProduct[pid];
@@ -237,17 +277,11 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
         existing['revenue'] += revenue;
         existing['sales'] += qtySold;
         existing['cost'] += cost;
-        existing['profit'] = existing['revenue'] - existing['cost'];
-        existing['margin'] = existing['revenue'] > 0
-            ? (existing['profit'] / existing['revenue']) * 100
-            : 0;
       } else {
         byProduct[pid] = {
           'revenue': revenue,
           'sales': qtySold,
           'cost': cost,
-          'profit': revenue - cost,
-          'margin': revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0,
           'stockRemaining': actualStockQty[pid] ?? 0,
         };
       }
@@ -258,18 +292,85 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
       totalTransactions++;
     }
 
+    //Handle returns (deduct)
+    // final allReturns = await DatabaseHelper().getAllReturns();
+    // final filteredReturns = allReturns.where((r) {
+    //   final date = DateTime.parse(r['date_returned']);
+    //   if (range != null) {
+    //     return date.isAfter(range.start.subtract(const Duration(days: 1))) &&
+    //         date.isBefore(range.end.add(const Duration(days: 1)));
+    //   }
+    //   return true;
+    // }).toList();
+    final allReturns = await DatabaseHelper().getAllReturns();
+    final filteredReturns = allReturns.where((r) {
+      final date = DateTime.parse(r['date_returned']);
+      if (range != null) {
+        return !date.isBefore(range.start) && !date.isAfter(range.end);
+      }
+      return true;
+    }).toList();
+
+    for (var r in filteredReturns) {
+      final pid = r['product_id'];
+      if (selectedProductId != null && pid != selectedProductId) continue;
+
+      if (viewType == 'Category-wise' &&
+          selectedCategory != null &&
+          (productCategoryMap[pid]?.toLowerCase() ?? '') !=
+              selectedCategory.toLowerCase()) continue;
+
+      final qty = r['quantity'] ?? 0;
+      final sellPrice = r['sell_price'] ?? 0.0;
+
+      double purchasePrice = 0.0;
+      if (r['stock_entry_id'] != null) {
+        final stockEntry =
+            await DatabaseHelper().getStockEntryById(r['stock_entry_id']);
+        purchasePrice = stockEntry?['purchase_price'] ?? 0.0;
+      } else {
+        final product = products.firstWhere((p) => p['product_id'] == pid,
+            orElse: () => {});
+        purchasePrice = product['purchase_price'] ?? 0.0;
+      }
+
+      final returnRevenue = qty * sellPrice;
+      final returnCost = qty * purchasePrice;
+
+      totalRevenue -= returnRevenue;
+      totalUnits -= qty as int;
+      totalCost -= returnCost;
+
+      if (byProduct.containsKey(pid)) {
+        byProduct[pid]['revenue'] -= returnRevenue;
+        byProduct[pid]['sales'] -= qty;
+        byProduct[pid]['cost'] -= returnCost;
+      }
+    }
+
+    // Finalize profit and margin
+    byProduct.forEach((pid, data) {
+      final revenue = data['revenue'] ?? 0.0;
+      final cost = data['cost'] ?? 0.0;
+      final profit = revenue - cost;
+      final margin = revenue > 0 ? (profit / revenue) * 100 : 0.0;
+
+      data['profit'] = profit;
+      data['margin'] = margin;
+    });
+
     result['totalRevenue'] = totalRevenue;
     result['totalSales'] = totalUnits;
     result['cost'] = totalCost;
     result['grossProfit'] = totalRevenue - totalCost;
     result['profitMargin'] = totalRevenue > 0
         ? ((totalRevenue - totalCost) / totalRevenue) * 100
-        : 0.0;
+        : 0;
     result['transactionCount'] = totalTransactions;
     result['byProduct'] = byProduct;
 
-    // For price insight charts
-    revenueMap.forEach((pid, revenue) {
+    // Price insights
+    revenueMap.forEach((pid, _) {
       priceInsights[pid] = {
         'avgSell': unitPrices[pid]!.isNotEmpty
             ? unitPrices[pid]!.reduce((a, b) => a + b) / unitPrices[pid]!.length
@@ -306,64 +407,28 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
       }
     }
 
-    // Process returns data
-    final returnsData = await DatabaseHelper().getAllReturns();
-    final returnMap = <String, int>{};
-    final returnValueMap = <String, double>{};
-    int totalReturns = 0;
-    double totalReturnValue = 0.0;
-
-    for (var returnItem in returnsData) {
-      final pid = returnItem['product_id'];
-      final qty = returnItem['quantity'] as int;
-      final product = products.firstWhere((p) => p['product_id'] == pid);
-      final purchasePrice = product['purchase_price'] as double;
-      final returnValue = qty * purchasePrice;
-
-      returnMap[pid] = (returnMap[pid] ?? 0) + qty;
-      returnValueMap[pid] = (returnValueMap[pid] ?? 0.0) + returnValue;
-      totalReturns += qty;
-      totalReturnValue += returnValue;
-
-      // Update product analytics with return data
-      if (byProduct.containsKey(pid)) {
-        byProduct[pid]!['returns'] = returnMap[pid];
-        byProduct[pid]!['returnValue'] = returnValueMap[pid];
-      }
-    }
-
-    (result['returns'] as Map<String, dynamic>)['totalReturns'] = totalReturns;
-    (result['returns'] as Map<String, dynamic>)['totalReturnValue'] =
-        totalReturnValue;
-    (result['returns'] as Map<String, dynamic>)['byProduct'] = returnMap;
-
-    // Find most returned product
-    if (returnMap.isNotEmpty) {
-      final mostReturned =
-          returnMap.entries.reduce((a, b) => a.value > b.value ? a : b).key;
-      (result['returns'] as Map<String, dynamic>)['mostReturned'] =
-          productNameMap[mostReturned] ?? '';
-    }
-
     return result;
   }
 
   @override
   Widget build(BuildContext context) {
-    // final themeProvider = context.watch<ThemeProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
+    final languageProvider = context.watch<LanguageProvider>();
+    final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
 
     return Scaffold(
+      backgroundColor: isDark
+          ? const Color.fromARGB(240, 0, 0, 0)
+          : const Color.fromARGB(240, 255, 255, 255),
       body: Stack(
         children: [
           Positioned.fill(
-            child: Container(
-              color: const Color.fromARGB(240, 255, 255, 255),
-              child: Opacity(
-                opacity: 0.3,
-                child: Image.asset(
-                  'assets/images/background.png',
-                  fit: BoxFit.cover,
-                ),
+            child: Opacity(
+              opacity: 0.1,
+              child: Image.asset(
+                'assets/images/background.png',
+                fit: BoxFit.cover,
               ),
             ),
           ),
@@ -375,19 +440,26 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
                   child: Column(
                     children: [
                       _buildFilterControls(),
-                      _buildSectionTitle('Sales & Profit Report'),
+                      _buildSectionTitle(isBangla
+                          ? 'বিক্রয় ও লাভের রিপোর্ট'
+                          : 'Sales & Profit Report'),
                       _buildAnalyticsReport(),
+                      const SizedBox(height: 10),
                       if (selectedProduct != null) ...[
-                        _buildSectionTitle('Product Performance'),
+                        _buildSectionTitle(isBangla
+                            ? 'পণ্যের কার্যকারিতা'
+                            : 'Product Performance'),
                         _buildProductPerformance(),
                       ],
-                      _buildReturnsSection(),
+                      const SizedBox(height: 10),
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: brightBlue, // Button Blue
-                            side: const BorderSide(color: deepIndigo, width: 2),
+                            backgroundColor: isDark ? darkShade1 : brightBlue,
+                            side: BorderSide(
+                                color: isDark ? darkShade3 : deepIndigo,
+                                width: 2),
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 25, vertical: 12),
                             shape: RoundedRectangleBorder(
@@ -397,11 +469,14 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
                           onPressed: exportReportAsPDF,
                           icon: const Icon(Icons.picture_as_pdf,
                               color: Colors.white),
-                          label: const Text(
-                            'Export Report (PDF)',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold),
+                          label: Text(
+                            isBangla
+                                ? 'রিপোর্ট এক্সপোর্ট করুন (PDF)'
+                                : 'Export Report (PDF)',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       )
@@ -413,11 +488,18 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNav(context, 2),
+      bottomNavigationBar: bottomNav(context, 2),
     );
   }
 
   Widget _buildFilterControls() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
+
+    final String allLabel = isBangla ? 'সব' : 'All';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       child: Wrap(
@@ -451,15 +533,15 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                side: const BorderSide(color: deepIndigo),
+                backgroundColor: isDark ? darkShade1 : Colors.white,
+                side: BorderSide(color: isDark ? darkShade3 : deepIndigo),
                 elevation: 1,
               ),
               child: Text(
                 selectedDateRange == null
-                    ? 'Select Date Range'
+                    ? (isBangla ? 'তারিখ নির্বাচন করুন' : 'Select Date Range')
                     : '${DateFormat.yMd().format(selectedDateRange!.start)} - ${DateFormat.yMd().format(selectedDateRange!.end)}',
-                style: const TextStyle(color: deepIndigo),
+                style: TextStyle(color: isDark ? Colors.white : deepIndigo),
               ),
             ),
           _buildStyledDropdown(
@@ -476,22 +558,24 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
           ),
           if (selectedViewType == 'Product-wise')
             _buildStyledDropdown(
-              selectedProduct ?? 'All',
-              ['All', ...allProducts],
+              selectedProduct ?? allLabel,
+              [allLabel, ...allProducts],
               (value) {
                 setState(() {
-                  selectedProduct = (value == 'All') ? null : value;
+                  selectedProduct =
+                      (value == 'All' || value == 'সব') ? null : value;
                   applyFilters();
                 });
               },
             )
           else if (selectedViewType == 'Category-wise')
             _buildStyledDropdown(
-              selectedCategory ?? 'All',
-              ['All', ...allCategories],
+              selectedCategory ?? allLabel,
+              [allLabel, ...allCategories],
               (value) {
                 setState(() {
-                  selectedCategory = (value == 'All') ? null : value;
+                  selectedCategory =
+                      (value == 'All' || value == 'সব') ? null : value;
                   applyFilters();
                 });
               },
@@ -503,89 +587,131 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
 
   Widget _buildStyledDropdown(
       String currentValue, List<String> options, Function(String?) onChanged) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: deepIndigo),
+        color: isDark ? darkShade1 : Colors.white,
+        border: Border.all(color: isDark ? Colors.white : deepIndigo),
         borderRadius: BorderRadius.circular(8),
       ),
       child: DropdownButton<String>(
         value: currentValue,
         underline: const SizedBox(),
-        iconEnabledColor: deepIndigo,
-        dropdownColor: Colors.white,
-        style: const TextStyle(color: deepIndigo),
+        iconEnabledColor: isDark ? darkShade3 : deepIndigo,
+        dropdownColor: isDark ? darkShade1 : Colors.white,
+        style: TextStyle(color: isDark ? Colors.white : deepIndigo),
         onChanged: onChanged,
-        items: options
-            .map((type) => DropdownMenuItem(
-                  value: type,
-                  child: Text(type),
-                ))
-            .toList(),
+        items: options.map((type) {
+          String label = type;
+          if (reportTypeLabels.containsKey(type)) {
+            label = isBangla
+                ? reportTypeLabels[type]!['bn']!
+                : reportTypeLabels[type]!['en']!;
+          } else if (viewTypeLabels.containsKey(type)) {
+            label = isBangla
+                ? viewTypeLabels[type]!['bn']!
+                : viewTypeLabels[type]!['en']!;
+          }
+          return DropdownMenuItem(
+            value: type,
+            child: Text(label),
+          );
+        }).toList(),
       ),
     );
   }
 
   Widget _buildAnalyticsReport() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
+
     final byProduct = analytics['byProduct'] as Map<String, dynamic>? ?? {};
     final priceInsights =
         analytics['priceInsights'] as Map<String, dynamic>? ?? {};
     final selected = selectedProduct != null;
 
-    const TextStyle whiteBold = TextStyle(
-      color: deepIndigo,
+    TextStyle whiteBold = TextStyle(
+      color: isDark ? Colors.white : deepIndigo,
       fontWeight: FontWeight.bold,
       fontSize: 14,
     );
 
     return Padding(
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: vibrantBlue.withOpacity(0.2),
+          color: isDark
+              ? darkShade1.withOpacity(0.5)
+              : vibrantBlue.withOpacity(0.2),
           borderRadius: BorderRadius.circular(10),
           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
-          border: Border.all(color: brightBlue, width: 2),
+          border: Border.all(color: isDark ? darkShade3 : brightBlue, width: 2),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Total Revenue: ৳${analytics['totalRevenue']?.toStringAsFixed(2)}',
+              isBangla
+                  ? 'মোট রাজস্ব: ৳${analytics['totalRevenue']?.toStringAsFixed(2)}'
+                  : 'Total Revenue: ৳${analytics['totalRevenue']?.toStringAsFixed(2)}',
               style: whiteBold,
             ),
-            Text('Total Sales: ${analytics['totalSales']} units',
-                style: whiteBold),
-            // Text(
-            //     'Total Purchase Cost: ৳${analytics['totalPurchaseCost']?.toStringAsFixed(2)}'),
             Text(
-                'COGS (Cost of Goods Sold): ৳${analytics['cost']?.toStringAsFixed(2)}',
-                style: whiteBold),
-            Text('Number of Transactions: ${analytics['transactionCount']}',
-                style: whiteBold),
-            if (!selected && analytics['bestSeller'] != '')
-              Text('Best Selling Product: ${analytics['bestSeller']}',
-                  style: whiteBold),
-            if (!selected && analytics['leastSeller'] != '')
-              Text('Least Selling Product: ${analytics['leastSeller']}',
-                  style: whiteBold),
-            if (!selected && analytics['bestMarginProduct'] != null)
-              Text(
-                'Best Profit Margin: ${analytics['bestMarginProduct']} '
-                '(${analytics['bestMarginValue']?.toStringAsFixed(2)}%)',
-                style: whiteBold,
-              ),
-            const Divider(
-              color: deepIndigo,
+              isBangla
+                  ? 'মোট বিক্রয়: ${analytics['totalSales']} ইউনিট'
+                  : 'Total Sales: ${analytics['totalSales']} units',
+              style: whiteBold,
             ),
             Text(
-                'Gross Profit: ৳${analytics['grossProfit']?.toStringAsFixed(2)}',
-                style: whiteBold),
+              isBangla
+                  ? 'পণ্য খরচ (COGS): ৳${analytics['cost']?.toStringAsFixed(2)}'
+                  : 'COGS (Cost of Goods Sold): ৳${analytics['cost']?.toStringAsFixed(2)}',
+              style: whiteBold,
+            ),
+            if (!selected && analytics['bestSeller'] != '')
+              Text(
+                isBangla
+                    ? 'সর্বাধিক বিক্রিত পণ্য: ${analytics['bestSeller']}'
+                    : 'Best Selling Product: ${analytics['bestSeller']}',
+                style: whiteBold,
+              ),
+            if (!selected && analytics['leastSeller'] != '')
+              Text(
+                isBangla
+                    ? 'সর্বনিম্ন বিক্রিত পণ্য: ${analytics['leastSeller']}'
+                    : 'Least Selling Product: ${analytics['leastSeller']}',
+                style: whiteBold,
+              ),
+            if (!selected && analytics['bestMarginProduct'] != null)
+              Text(
+                isBangla
+                    ? 'সর্বোচ্চ লাভের মার্জিন: ${analytics['bestMarginProduct']} '
+                        '(${analytics['bestMarginValue']?.toStringAsFixed(2)}%)'
+                    : 'Best Profit Margin: ${analytics['bestMarginProduct']} '
+                        '(${analytics['bestMarginValue']?.toStringAsFixed(2)}%)',
+                style: whiteBold,
+              ),
+            Divider(color: isDark ? darkShade3 : deepIndigo),
             Text(
-                'Profit Margin: ${analytics['profitMargin']?.toStringAsFixed(2)} %',
-                style: whiteBold),
+              isBangla
+                  ? 'মোট লাভ: ৳${analytics['grossProfit']?.toStringAsFixed(2)}'
+                  : 'Gross Profit: ৳${analytics['grossProfit']?.toStringAsFixed(2)}',
+              style: whiteBold,
+            ),
+            Text(
+              isBangla
+                  ? 'লাভের হার: ${analytics['profitMargin']?.toStringAsFixed(2)} %'
+                  : 'Profit Margin: ${analytics['profitMargin']?.toStringAsFixed(2)} %',
+              style: whiteBold,
+            ),
             if (selected && byProduct.isNotEmpty)
               Builder(builder: (_) {
                 final pid = byProduct.keys.first;
@@ -594,13 +720,19 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Divider(),
+                      Divider(color: isDark ? darkShade3 : deepIndigo),
                       Text(
-                          'Avg Selling Price: ৳${(insight['avgSell'] as double).toStringAsFixed(2)}',
-                          style: whiteBold),
+                        isBangla
+                            ? 'গড় বিক্রয়মূল্য: ৳${(insight['avgSell'] as double).toStringAsFixed(2)}'
+                            : 'Avg Selling Price: ৳${(insight['avgSell'] as double).toStringAsFixed(2)}',
+                        style: whiteBold,
+                      ),
                       Text(
-                          'Avg Purchase Price: ৳${(insight['avgPurchase'] as double).toStringAsFixed(2)}',
-                          style: whiteBold),
+                        isBangla
+                            ? 'গড় ক্রয়মূল্য: ৳${(insight['avgPurchase'] as double).toStringAsFixed(2)}'
+                            : 'Avg Purchase Price: ৳${(insight['avgPurchase'] as double).toStringAsFixed(2)}',
+                        style: whiteBold,
+                      ),
                     ],
                   );
                 }
@@ -613,28 +745,36 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
   }
 
   Widget _buildProductPerformance() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
+
     final byProduct = analytics['byProduct'] as Map<String, dynamic>;
     final selected = selectedProduct != null;
 
-    const TextStyle whiteBold = TextStyle(
-      color: deepIndigo,
+    TextStyle whiteBold = TextStyle(
+      color: isDark ? Colors.white : deepIndigo,
       fontWeight: FontWeight.bold,
       fontSize: 14,
     );
 
     if (!selected || byProduct.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: SizedBox(
           width: double.infinity,
           child: Card(
-            color: Colors.white,
+            color: isDark ? darkShade1.withOpacity(0.5) : Colors.white,
             elevation: 2,
             child: Padding(
-              padding: EdgeInsets.all(15),
+              padding: const EdgeInsets.all(15),
               child: Text(
-                'No performance data available for the selected product.',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
+                isBangla
+                    ? 'নির্বাচিত পণ্যের জন্য কোনো কার্যকারিতা তথ্য পাওয়া যায়নি।'
+                    : 'No performance data available for the selected product.',
+                style: TextStyle(
+                    color: isDark ? Colors.white : Colors.grey, fontSize: 14),
               ),
             ),
           ),
@@ -652,25 +792,42 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
         child: Container(
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
-            color: vibrantBlue.withOpacity(0.2),
+            color: isDark
+                ? darkShade1.withOpacity(0.5)
+                : vibrantBlue.withOpacity(0.2),
             borderRadius: BorderRadius.circular(10),
             boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
-            border: Border.all(color: brightBlue, width: 2),
+            border:
+                Border.all(color: isDark ? darkShade3 : brightBlue, width: 2),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 10),
-              Text(' $selectedProduct'),
-              Text('  Units Sold: ${data['sales']}', style: whiteBold),
               Text(
-                  '  Revenue: ৳${(data['revenue'] as double).toStringAsFixed(2)}',
-                  style: whiteBold),
+                isBangla
+                    ? '  বিক্রিত ইউনিট: ${data['sales']}'
+                    : '  Units Sold: ${data['sales']}',
+                style: whiteBold,
+              ),
               Text(
-                  '  Profit: ৳${(data['profit'] as double).toStringAsFixed(2)}',
-                  style: whiteBold),
-              Text('  Stock Remaining: ${data['stockRemaining']}',
-                  style: whiteBold),
+                isBangla
+                    ? '  আয়: ৳${(data['revenue'] as double).toStringAsFixed(2)}'
+                    : '  Revenue: ৳${(data['revenue'] as double).toStringAsFixed(2)}',
+                style: whiteBold,
+              ),
+              Text(
+                isBangla
+                    ? '  লাভ: ৳${(data['profit'] as double).toStringAsFixed(2)}'
+                    : '  Profit: ৳${(data['profit'] as double).toStringAsFixed(2)}',
+                style: whiteBold,
+              ),
+              Text(
+                isBangla
+                    ? '  অবশিষ্ট স্টক: ${data['stockRemaining']}'
+                    : '  Stock Remaining: ${data['stockRemaining']}',
+                style: whiteBold,
+              ),
             ],
           ),
         ),
@@ -678,75 +835,131 @@ class _ReportAnalyticsPageState extends State<ReportAnalyticsPage> {
     );
   }
 
-  Widget _buildReturnsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('Returns Analysis'),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 5,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildStatRow(
-                'Total Returns',
-                '${analytics['returns']['totalReturns']} units',
-                Icons.undo,
-              ),
-              const SizedBox(height: 12),
-              _buildStatRow(
-                'Total Return Value',
-                '৳ ${analytics['returns']['totalReturnValue'].toStringAsFixed(2)}',
-                Icons.attach_money,
-              ),
-              const SizedBox(height: 12),
-              _buildStatRow(
-                'Most Returned Product',
-                analytics['returns']['mostReturned'] ?? 'None',
-                Icons.warning,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+  // Widget _buildBarChartSection() {
+  //   final byProduct = analytics['byProduct'] as Map<String, dynamic>;
+  //   final List<BarChartGroupData> barGroups = [];
 
-  Widget _buildStatRow(String label, String value, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: vibrantBlue),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black87,
-          ),
-        ),
-        const Spacer(),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: deepIndigo,
-          ),
-        ),
-      ],
-    );
+  //   int index = 0;
+  //   byProduct.forEach((key, value) {
+  //     barGroups.add(
+  //       BarChartGroupData(x: index++, barRods: [
+  //         BarChartRodData(toY: value['revenue'], width: 6),
+  //         BarChartRodData(toY: value['cost'], width: 6),
+  //         BarChartRodData(toY: value['profit'], width: 6),
+  //       ]),
+  //     );
+  //   });
+
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+  //     child: Container(
+  //       height: 300,
+  //       decoration: BoxDecoration(
+  //         color: Colors.white,
+  //         borderRadius: BorderRadius.circular(10),
+  //         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
+  //       ),
+  //       child: BarChart(
+  //         BarChartData(
+  //           barGroups: barGroups,
+  //           titlesData: FlTitlesData(
+  //             leftTitles: AxisTitles(
+  //               sideTitles: SideTitles(showTitles: true, reservedSize: 40),
+  //             ),
+  //             bottomTitles: AxisTitles(
+  //               sideTitles: SideTitles(
+  //                 showTitles: true,
+  //                 getTitlesWidget: (value, meta) {
+  //                   return Text(byProduct.keys.elementAt(value.toInt()));
+  //                 },
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  Future<Map<String, dynamic>> generateReturnAnalytics(
+    List<Map<String, dynamic>> products,
+    Map<String, Map<String, dynamic>> byProduct,
+    Map<String, String> productNameMap,
+    DateTimeRange range, {
+    String? selectedProduct,
+  }) async {
+    final returnsData = (await DatabaseHelper().getAllReturns()).where((r) {
+      final date = DateTime.parse(r['date_returned']);
+      return !date.isBefore(range.start) && !date.isAfter(range.end);
+    }).toList();
+
+    final returnMap = <String, int>{};
+    final returnValueMap = <String, double>{};
+    final profitLossMap = <String, double>{};
+    int totalReturns = 0;
+    double totalReturnValue = 0.0;
+    double totalProfitLoss = 0.0;
+    double totalReturnSellValue = 0.0;
+
+    for (var returnItem in returnsData) {
+      final pid = returnItem['product_id'];
+      final productName = productNameMap[pid]?.toLowerCase() ?? '';
+
+      //Skip if selectedProduct is set and doesn't match
+      if (selectedProduct != null &&
+          productName != selectedProduct.toLowerCase()) {
+        continue;
+      }
+
+      final qty = returnItem['quantity'] as int;
+      final sellPrice = returnItem['sell_price'] as double;
+      final returnSellValue = qty * sellPrice;
+      totalReturnSellValue += returnSellValue;
+
+      // Use stock_entry_id to find the actual purchase price
+      double purchasePrice = 0.0;
+
+      if (returnItem['stock_entry_id'] != null) {
+        final stockEntryId = returnItem['stock_entry_id'];
+        final stockEntry =
+            await DatabaseHelper().getStockEntryById(stockEntryId);
+        purchasePrice = stockEntry?['purchase_price'] ?? 0.0;
+      } else {
+        final product = products.firstWhere((p) => p['product_id'] == pid);
+        purchasePrice = product['purchase_price'] as double;
+      }
+
+      final returnValue = qty * purchasePrice;
+      final profitLoss = qty * (sellPrice - purchasePrice);
+
+      returnMap[pid] = (returnMap[pid] ?? 0) + qty;
+      returnValueMap[pid] = (returnValueMap[pid] ?? 0.0) + returnValue;
+      profitLossMap[pid] = (profitLossMap[pid] ?? 0.0) + profitLoss;
+
+      totalReturns += qty;
+      totalReturnValue += returnValue;
+      totalProfitLoss += profitLoss;
+
+      if (byProduct.containsKey(pid)) {
+        byProduct[pid]!['returns'] = returnMap[pid];
+        byProduct[pid]!['returnValue'] = returnValueMap[pid];
+        byProduct[pid]!['returnProfitLoss'] = profitLossMap[pid];
+      }
+    }
+
+    return {
+      'totalReturns': totalReturns,
+      'totalReturnValue': totalReturnValue,
+      'totalReturnSellValue': totalReturnSellValue,
+      'totalProfitLoss': totalProfitLoss,
+      'byProduct': returnMap,
+      'mostReturned': returnMap.isNotEmpty
+          ? productNameMap[returnMap.entries
+                  .reduce((a, b) => a.value > b.value ? a : b)
+                  .key] ??
+              ''
+          : ''
+    };
   }
 
   Future<void> exportReportAsPDF() async {

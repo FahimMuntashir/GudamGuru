@@ -1,7 +1,10 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'database_helper.dart';
 import 'header&nav.dart';
 import 'providers/theme_provider.dart';
+import 'providers/language_provider.dart';
 import 'package:provider/provider.dart';
 
 const Color deepIndigo = Color(0xFF211C84);
@@ -15,6 +18,7 @@ class NewItemPage extends StatefulWidget {
   const NewItemPage({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _NewItemPageState createState() => _NewItemPageState();
 }
 
@@ -53,6 +57,27 @@ class _NewItemPageState extends State<NewItemPage> {
     }
   }
 
+  String _getLocalizedUnit(String unit, bool isBangla) {
+    final unitMap = {
+      'KG': 'কেজি',
+      'Pcs': 'টি',
+      'Litre': 'লিটার',
+      'Dozen': 'ডজন',
+      'Bags': 'ব্যাগ',
+      'Set': 'সেট',
+      'Gauge': 'গজ',
+      'Packet': 'প্যাকেট',
+      'Carton': 'কার্টন',
+      'SQ Metre': 'বর্গমিটার',
+      'Metre': 'মিটার',
+      'SQ Feet': 'বর্গফুট',
+      'Feet': 'ফুট',
+      'Inch': 'ইঞ্চি',
+    };
+
+    return isBangla ? (unitMap[unit] ?? unit) : unit;
+  }
+
   void _selectProduct(Map<String, dynamic> product) {
     setState(() {
       selectedProduct = product;
@@ -62,9 +87,18 @@ class _NewItemPageState extends State<NewItemPage> {
   }
 
   Future<void> _addItem() async {
+    final isDark = context.read<ThemeProvider>().isDarkMode;
+    final isBangla = context.read<LanguageProvider>().isBangla;
+
     if (selectedProduct == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("No product selected.")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isBangla
+              ? "কোনো পণ্য নির্বাচন করা হয়নি।"
+              : "No product selected."),
+          backgroundColor: isDark ? darkShade3 : deepIndigo,
+        ),
+      );
       return;
     }
 
@@ -75,7 +109,12 @@ class _NewItemPageState extends State<NewItemPage> {
 
     if (purchasePrice == null || quantity == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter valid price and quantity.")),
+        SnackBar(
+          content: Text(isBangla
+              ? "দয়া করে সঠিক মূল্য এবং পরিমাণ লিখুন।"
+              : "Please enter valid price and quantity."),
+          backgroundColor: isDark ? darkShade3 : deepIndigo,
+        ),
       );
       return;
     }
@@ -90,7 +129,12 @@ class _NewItemPageState extends State<NewItemPage> {
     await DatabaseHelper().updateProductQuantity(productId, quantity);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Item added successfully!")),
+      SnackBar(
+        content: Text(isBangla
+            ? "আইটেম সফলভাবে যুক্ত হয়েছে!"
+            : "Item added successfully!"),
+        backgroundColor: isDark ? darkShade3 : deepIndigo,
+      ),
     );
 
     setState(() {
@@ -102,10 +146,133 @@ class _NewItemPageState extends State<NewItemPage> {
     });
   }
 
+  void _showConfirmationDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final languageProvider =
+        Provider.of<LanguageProvider>(context, listen: false);
+    final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
+
+    if (selectedProduct == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isBangla ? "কোনো পণ্য নির্বাচন করা হয়নি।" : "No product selected.",
+          ),
+          backgroundColor: isDark ? darkShade3 : deepIndigo,
+        ),
+      );
+      return;
+    }
+
+    final String productId = selectedProduct!['product_id'];
+    final String productName = selectedProduct!['name'];
+    final double? purchasePrice = double.tryParse(_priceController.text);
+    final int? quantity = int.tryParse(_quantityController.text);
+    final String description = _descriptionController.text;
+
+    if (purchasePrice == null || quantity == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isBangla
+                ? "দয়া করে সঠিক মূল্য এবং পরিমাণ লিখুন।"
+                : "Please enter valid price and quantity.",
+          ),
+          backgroundColor: isDark ? darkShade3 : deepIndigo,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: isDark ? Colors.black : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+            side: BorderSide(
+              color: isDark ? Colors.white70 : deepIndigo,
+              width: 1.5,
+            ),
+          ),
+          title: Text(
+            isBangla ? 'আইটেম নিশ্চিত করুন' : 'Confirm Item Details',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : deepIndigo,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildBoldRow(
+                    isBangla ? 'পণ্য' : 'Product', productName, isDark),
+                _buildBoldRow(
+                    isBangla ? 'পণ্য আইডি' : 'Product ID', productId, isDark),
+                _buildBoldRow(isBangla ? 'মূল্য' : 'Purchase Price',
+                    purchasePrice.toString(), isDark),
+                _buildBoldRow(isBangla ? 'পরিমাণ' : 'Quantity',
+                    quantity.toString(), isDark),
+                _buildBoldRow(
+                  isBangla ? 'বর্ণনা' : 'Description',
+                  description.isNotEmpty ? description : (isBangla ? '—' : '—'),
+                  isDark,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                isBangla ? 'বাতিল' : 'Cancel',
+                style: TextStyle(
+                    color: isDark ? Colors.grey[300] : Colors.black87),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDark ? darkShade3 : brightBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.pop(context);
+                await _addItem();
+              },
+              child: Text(isBangla ? 'নিশ্চিত করুন' : 'Confirm'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBoldRow(String label, String value, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        "$label: $value",
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 14.5,
+          color: isDark ? Colors.white : Colors.black,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
     final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
 
     return Scaffold(
       backgroundColor: isDark
@@ -142,12 +309,14 @@ class _NewItemPageState extends State<NewItemPage> {
                           borderRadius: BorderRadius.circular(10),
                           boxShadow: [
                             BoxShadow(
-                                color: isDark ? Colors.black45 : Colors.black12,
-                                blurRadius: 10)
+                              color: isDark ? Colors.black45 : Colors.black12,
+                              blurRadius: 10,
+                            )
                           ],
                           border: Border.all(
-                              color: isDark ? Colors.white : brightBlue,
-                              width: 2),
+                            color: isDark ? Colors.white : brightBlue,
+                            width: 2,
+                          ),
                         ),
                         child: Column(
                           children: [
@@ -169,32 +338,44 @@ class _NewItemPageState extends State<NewItemPage> {
                             const SizedBox(height: 10),
                             if (selectedProduct != null)
                               _buildProductDetails(selectedProduct!),
-                            _buildTextField("New Purchase Price",
-                                controller: _priceController, isNumber: true),
-                            _buildTextField("Quantity",
-                                controller: _quantityController,
-                                isNumber: true),
-                            _buildTextField("Description (Optional)",
-                                controller: _descriptionController,
-                                maxLines: 3),
+                            _buildTextField(
+                              isBangla ? "ক্রয় মূল্য" : "New Purchase Price",
+                              controller: _priceController,
+                              isNumber: true,
+                            ),
+                            _buildTextField(
+                              isBangla ? "পরিমাণ" : "Quantity",
+                              controller: _quantityController,
+                              isNumber: true,
+                            ),
+                            _buildTextField(
+                              isBangla
+                                  ? "বর্ণনা (ঐচ্ছিক)"
+                                  : "Description (Optional)",
+                              controller: _descriptionController,
+                              maxLines: 3,
+                            ),
                             const SizedBox(height: 10),
                             ElevatedButton(
-                              onPressed: _addItem,
+                              onPressed: _showConfirmationDialog,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor:
                                     isDark ? darkShade1 : brightBlue,
                                 side: BorderSide(
-                                    color: isDark ? darkShade3 : deepIndigo,
-                                    width: 1.5),
+                                  color: isDark ? darkShade3 : deepIndigo,
+                                  width: 1.5,
+                                ),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 40, vertical: 15),
+                                  horizontal: 40,
+                                  vertical: 15,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30),
                                 ),
                               ),
-                              child: const Text(
-                                "Add Item",
-                                style: TextStyle(
+                              child: Text(
+                                isBangla ? "আইটেম যোগ করুন" : "Add Item",
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -213,20 +394,27 @@ class _NewItemPageState extends State<NewItemPage> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNav(context, null),
+      bottomNavigationBar: bottomNav(context, null),
     );
   }
 
   Widget _buildSearchBar() {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
     final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
 
     return TextField(
       controller: _searchController,
       onChanged: _searchProduct,
+      style: TextStyle(
+        color: isDark ? Colors.white : Colors.black,
+      ),
       decoration: InputDecoration(
-        hintText: 'Search by Product ID or Name',
-        hintStyle: TextStyle(color: isDark ? Colors.white : deepIndigo),
+        hintText: isBangla
+            ? 'পণ্যের আইডি বা নাম দিয়ে খুঁজুন'
+            : 'Search by Product ID or Name',
+        hintStyle: TextStyle(color: isDark ? Colors.white70 : deepIndigo),
         prefixIcon: Icon(
           Icons.search,
           color: isDark ? Colors.white : deepIndigo,
@@ -246,8 +434,9 @@ class _NewItemPageState extends State<NewItemPage> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-              color: isDark ? darkShade3 : Color.fromARGB(255, 13, 0, 255),
-              width: 2),
+            color: isDark ? darkShade3 : const Color.fromARGB(255, 13, 0, 255),
+            width: 2,
+          ),
         ),
       ),
     );
@@ -255,7 +444,9 @@ class _NewItemPageState extends State<NewItemPage> {
 
   Widget _buildProductDetails(Map<String, dynamic> product) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
     final bool isDark = themeProvider.isDarkMode;
+    final bool isBangla = languageProvider.isBangla;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -272,18 +463,28 @@ class _NewItemPageState extends State<NewItemPage> {
                     : const Color.fromARGB(255, 255, 255, 255).withOpacity(0.8),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                    color: isDark ? darkShade3 : deepIndigo, width: 1.5),
+                  color: isDark ? darkShade3 : deepIndigo,
+                  width: 1.5,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Name: ${product['name']}   (ID: ${product['product_id']})',
+                    isBangla
+                        ? 'নাম: ${product['name']}   (আইডি: ${product['product_id']})'
+                        : 'Name: ${product['name']}   (ID: ${product['product_id']})',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 5),
-                  Text('Brand: ${product['brand_name'] ?? ''}'),
-                  Text('Unit: ${product['unit'] ?? ''}'),
+                  Text(isBangla
+                      ? 'ব্র্যান্ড: ${product['brand_name'] ?? ''}'
+                      : 'Brand: ${product['brand_name'] ?? ''}'),
+                  Text(
+                    isBangla
+                        ? 'একক: ${_getLocalizedUnit(product['unit'] ?? '', true)}'
+                        : 'Unit: ${_getLocalizedUnit(product['unit'] ?? '', false)}',
+                  ),
                 ],
               ),
             ),
@@ -293,7 +494,7 @@ class _NewItemPageState extends State<NewItemPage> {
               child: IconButton(
                 icon:
                     Icon(Icons.cancel, color: isDark ? darkShade3 : deepIndigo),
-                tooltip: 'Unselect',
+                tooltip: isBangla ? 'মুছুন' : 'Unselect',
                 onPressed: () {
                   setState(() {
                     selectedProduct = null;
@@ -338,7 +539,8 @@ class _NewItemPageState extends State<NewItemPage> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(
-                color: isDark ? darkShade3 : Color.fromARGB(255, 13, 0, 255),
+                color:
+                    isDark ? darkShade3 : const Color.fromARGB(255, 13, 0, 255),
                 width: 2),
           ),
         ),

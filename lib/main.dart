@@ -1,23 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import 'login.dart';
+import 'homepage.dart';
 import 'providers/theme_provider.dart';
 import 'signUpPage.dart';
+import 'providers/language_provider.dart';
+import 'UserSession.dart';
 
-void main() {
+const Color deepIndigo = Color(0xFF211C84);
+const Color brightBlue = Color(0xFF0037FF);
+const Color darkShade1 = Color.fromARGB(255, 24, 28, 20);
+const Color darkShade3 = Color.fromARGB(255, 105, 117, 101);
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final session = UserSession();
+  await session.loadFromPrefs();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
       ],
-      child: const MyApp(),
+      child: MyApp(isLoggedIn: session.isLoggedIn),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool isLoggedIn;
+  const MyApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +44,7 @@ class MyApp extends StatelessWidget {
             brightness:
                 themeProvider.isDarkMode ? Brightness.dark : Brightness.light,
           ),
-          home: const LandingPage(),
+          home: isLoggedIn ? const HomePage() : const LandingPage(),
         );
       },
     );
@@ -43,28 +56,31 @@ class LandingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final bool isDark = themeProvider.isDarkMode;
+
     return Scaffold(
+      backgroundColor: isDark
+          ? const Color.fromARGB(240, 0, 0, 0)
+          : const Color.fromARGB(240, 255, 255, 255),
       body: Stack(
         children: [
-          // Background image
           Positioned.fill(
             child: Image.asset(
-              'assets/images/background.png', // Add this image in your assets folder
+              'assets/images/background.png',
               fit: BoxFit.cover,
-              opacity: const AlwaysStoppedAnimation(0.2),
+              opacity: const AlwaysStoppedAnimation(0.1),
             ),
           ),
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Logo
                 Image.asset(
-                  'assets/images/logo.png', // Add your logo image in assets
+                  'assets/images/logo.png',
                   width: 400,
                 ),
                 const SizedBox(height: 30),
-                // App Name
                 const Text(
                   '',
                   style: TextStyle(
@@ -74,13 +90,11 @@ class LandingPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 5),
-
-                const SizedBox(height: 40),
-                // Buttons
+                const SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildButton(context, 'Sign Up', Colors.green, () {
+                    _buildButton(context, 'Sign Up', () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -88,7 +102,7 @@ class LandingPage extends StatelessWidget {
                       );
                     }),
                     const SizedBox(width: 20),
-                    _buildButton(context, 'Login', Colors.green, () {
+                    _buildButton(context, 'Login', () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -106,13 +120,17 @@ class LandingPage extends StatelessWidget {
   }
 
   Widget _buildButton(
-      BuildContext context, String text, Color color, VoidCallback onPressed) {
+      BuildContext context, String text, VoidCallback onPressed) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final bool isDark = themeProvider.isDarkMode;
+
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+        backgroundColor: isDark ? darkShade1 : brightBlue,
+        side: BorderSide(color: isDark ? darkShade3 : deepIndigo, width: 1.5),
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(30),
         ),
       ),
       onPressed: onPressed,
