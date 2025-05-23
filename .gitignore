@@ -33,7 +33,9 @@ migrate_working_dir/
 lib/database_helper.dart
 lib/homepage.dart
 lib/inventory.dart 
-lib/reportanalysis.dart
+lib/reportanalytics.dart
+lib/backupnewitem.dart
+lib/backupNewproduct.dart
 
 # Symbolication related
 app.*.symbols
